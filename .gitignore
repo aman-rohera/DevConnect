@@ -43,3 +43,6 @@ out/
 .DS_Store
 Thumbs.db
 db.json
+
+# Local Database Folder (Redundant schema files)
+backend/database/

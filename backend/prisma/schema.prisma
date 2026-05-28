@@ -1,0 +1,59 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String      @id @default(uuid()) @db.Uuid
+  email         String      @unique
+  passwordHash  String      @map("password_hash")
+  fullName      String      @map("full_name")
+  headline      String?     @default("")
+  bio           String?     @default("")
+  avatarUrl     String?     @default("") @map("avatar_url")
+  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime    @updatedAt @map("updated_at") @db.Timestamptz
+  
+  skills        UserSkill[]
+  projects      Project[]
+
+  @@map("users")
+}
+
+model Skill {
+  id    Int         @id @default(autoincrement())
+  name  String      @unique
+  users UserSkill[]
+
+  @@map("skills")
+}
+
+model UserSkill {
+  userId  String @map("user_id") @db.Uuid
+  skillId Int    @map("skill_id")
+  
+  user    User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skill   Skill @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@id([userId, skillId])
+  @@map("user_skills")
+}
+
+model Project {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  title       String
+  description String
+  projectUrl  String?  @default("") @map("project_url")
+  repoUrl     String?  @default("") @map("repo_url")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("projects")
+}
