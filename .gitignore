@@ -16,7 +16,8 @@ build/
 out/
 .next/
 .nuxt/
-
+.md
+.pdf
 # Environment variables and secrets
 .env
 .env.local

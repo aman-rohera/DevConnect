@@ -1,0 +1,338 @@
+.dc-login-container {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  padding: 40px 24px;
+}
+
+/* Decorative grid pattern in background */
+.dc-login-grid {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    linear-gradient(to right, hsl(var(--border) / 0.15) 1px, transparent 1px),
+    linear-gradient(to bottom, hsl(var(--border) / 0.15) 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask-image: radial-gradient(circle at center, black 40%, transparent 100%);
+  -webkit-mask-image: radial-gradient(circle at center, black 40%, transparent 100%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Accent glowing orb backgrounds */
+.dc-accent-light {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(120px);
+  -webkit-filter: blur(120px);
+  opacity: 0.15;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.dc-accent-light--purple {
+  width: 400px;
+  height: 400px;
+  background-color: hsl(var(--primary));
+  top: -100px;
+  left: -100px;
+}
+
+.dc-accent-light--teal {
+  width: 500px;
+  height: 500px;
+  background-color: hsl(var(--secondary));
+  bottom: -150px;
+  right: -100px;
+}
+
+/* Content grid */
+.dc-login-content {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 64px;
+  max-width: 1100px;
+  width: 100%;
+  align-items: center;
+  position: relative;
+  z-index: 1;
+}
+
+/* Left Brand Promo Area */
+.dc-brand-promo {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.dc-brand-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: fit-content;
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  background: hsl(var(--bg-card) / 0.5);
+  border: 1px solid hsl(var(--border));
+  transition: all 0.3s ease;
+}
+
+.dc-brand-logo-icon {
+  color: hsl(var(--primary));
+  width: 24px;
+  height: 24px;
+}
+
+.dc-brand-logo-text {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.dc-promo-title {
+  font-size: 42px;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+}
+
+.dc-promo-subtitle {
+  font-size: 16px;
+  line-height: 1.6;
+  color: hsl(var(--text-secondary));
+}
+
+.dc-features-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-top: 16px;
+}
+
+.dc-feature-item {
+  display: flex;
+  gap: 16px;
+}
+
+.dc-feature-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  background: hsl(var(--primary) / 0.1);
+  color: hsl(var(--primary));
+  flex-shrink: 0;
+}
+
+.dc-feature-item h4 {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.dc-feature-item p {
+  font-size: 13px;
+  color: hsl(var(--text-secondary));
+  line-height: 1.4;
+}
+
+/* Form Container and Fields styling */
+.dc-login-form-wrapper {
+  width: 100%;
+}
+
+.dc-login-card {
+  padding: 40px;
+}
+
+.dc-form-header {
+  margin-bottom: 28px;
+}
+
+.dc-form-header h2 {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 6px;
+}
+
+.dc-form-header p {
+  font-size: 14px;
+  color: hsl(var(--text-secondary));
+}
+
+.dc-form-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.dc-forgot-link-wrapper {
+  text-align: right;
+  margin-top: -8px;
+  margin-bottom: 4px;
+}
+
+.dc-text-link {
+  font-size: 12px;
+  font-weight: 500;
+  color: hsl(var(--text-secondary));
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.dc-text-link:hover {
+  color: hsl(var(--primary));
+}
+
+.dc-text-link-btn {
+  background: none;
+  border: none;
+  font-size: 12px;
+  font-weight: 500;
+  color: hsl(var(--text-secondary));
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+  transition: color 0.2s ease;
+}
+
+.dc-text-link-btn:hover {
+  color: hsl(var(--primary));
+  text-decoration: underline;
+}
+
+.dc-form-divider {
+  display: flex;
+  align-items: center;
+  margin: 24px 0;
+}
+
+.dc-form-divider::before,
+.dc-form-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background-color: hsl(var(--border));
+}
+
+.dc-form-divider span {
+  padding: 0 16px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: hsl(var(--text-muted));
+}
+
+.dc-signup-prompt {
+  text-align: center;
+  font-size: 13px;
+  color: hsl(var(--text-secondary));
+  margin-top: 24px;
+}
+
+.dc-text-link-primary {
+  color: hsl(var(--primary));
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.dc-text-link-primary:hover {
+  text-decoration: underline;
+}
+
+/* Alert Styling */
+.dc-alert {
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  margin-bottom: 24px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid transparent;
+  animation: dc-slide-down 0.2s ease-out;
+}
+
+.dc-alert--danger {
+  background-color: hsl(var(--error) / 0.1);
+  border-color: hsl(var(--error) / 0.2);
+  color: hsl(var(--error));
+}
+
+.dc-alert--success {
+  background-color: hsl(var(--secondary) / 0.1);
+  border-color: hsl(var(--secondary) / 0.2);
+  color: hsl(var(--secondary));
+}
+
+/* Ghost Loader Simulation Styling */
+.dc-ghost-loader-view {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.dc-ghost-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border-bottom: 1px solid hsl(var(--border));
+  padding-bottom: 16px;
+}
+
+.dc-ghost-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dc-ghost-box {
+  margin: 8px 0;
+}
+
+/* Utilities helper */
+.mt-2 {
+  margin-top: 8px;
+}
+
+/* Responsive Breakpoints */
+@media (max-width: 968px) {
+  .dc-login-content {
+    grid-template-columns: 1fr;
+    gap: 48px;
+    max-width: 500px;
+  }
+  .dc-brand-promo {
+    text-align: center;
+    align-items: center;
+  }
+  .dc-brand-logo {
+    margin: 0 auto;
+  }
+  .dc-promo-title {
+    font-size: 32px;
+  }
+  .dc-features-list {
+    display: none; /* Hide promo list on mobile to keep focus on log in */
+  }
+}
+
+@media (max-width: 480px) {
+  .dc-login-container {
+    padding: 24px 16px;
+  }
+  .dc-login-card {
+    padding: 24px;
+  }
+  .dc-promo-title {
+    font-size: 28px;
+  }
+}

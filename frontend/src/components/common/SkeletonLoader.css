@@ -1,0 +1,44 @@
+.dc-skeleton {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--border)) 25%,
+    hsl(var(--bg-card)) 50%,
+    hsl(var(--border)) 75%
+  );
+  background-size: 200% 100%;
+  animation: dc-shimmer 1.5s infinite linear;
+  display: inline-block;
+  width: 100%;
+}
+
+.dc-skeleton--text {
+  height: 14px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+}
+
+.dc-skeleton--text:last-child {
+  margin-bottom: 0;
+  width: 75%;
+}
+
+.dc-skeleton--circle {
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+}
+
+.dc-skeleton--rectangle {
+  height: 100px;
+  border-radius: var(--radius-md);
+}
+
+@keyframes dc-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
