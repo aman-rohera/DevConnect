@@ -10,6 +10,9 @@ export const getUserProfile = async (userId) => {
       headline: true,
       bio: true,
       avatarUrl: true,
+      education: true,
+      experience: true,
+      certificates: true,
       createdAt: true,
       projects: true,
       skills: {
@@ -32,44 +35,69 @@ export const getUserProfile = async (userId) => {
 };
 
 export const updateUserProfile = async (userId, data) => {
-  const { headline, bio, avatarUrl, skills } = data;
+  const { headline, bio, avatarUrl, skills, projects, education, experience, certificates } = data;
 
-  // Use a Transaction to ensure all database steps succeed together
-  return await prisma.$transaction(async (tx) => {
-    // 1. Update basic profile info
-    await tx.user.update({
-      where: { id: userId },
-      data: { headline, bio, avatarUrl }
+  // 1. Update basic profile info & JSON fields
+  await prisma.user.update({
+    where: { id: userId },
+    data: { 
+      headline, 
+      bio, 
+      avatarUrl,
+      education: education || [],
+      experience: experience || [],
+      certificates: certificates || []
+    }
+  });
+
+  // 2. If skills are provided, update the many-to-many junction table
+  if (skills && Array.isArray(skills)) {
+    // Delete existing skill links
+    await prisma.userSkill.deleteMany({
+      where: { userId }
     });
 
-    // 2. If skills are provided, update the many-to-many junction table
-    if (skills && Array.isArray(skills)) {
-      // Delete existing skill links
-      await tx.userSkill.deleteMany({
-        where: { userId }
+    // Link new skills
+    for (const skillName of skills) {
+      // Upsert the skill in the master table (find or create)
+      const skill = await prisma.skill.upsert({
+        where: { name: skillName.trim() },
+        update: {},
+        create: { name: skillName.trim() }
       });
 
-      // Link new skills
-      for (const skillName of skills) {
-        // Upsert the skill in the master table (find or create)
-        const skill = await tx.skill.upsert({
-          where: { name: skillName.trim() },
-          update: {},
-          create: { name: skillName.trim() }
-        });
-
-        // Insert into junction table
-        await tx.userSkill.create({
-          data: {
-            userId,
-            skillId: skill.id
-          }
-        });
-      }
+      // Insert into junction table
+      await prisma.userSkill.create({
+        data: {
+          userId,
+          skillId: skill.id
+        }
+      });
     }
+  }
 
-    // Return the updated profile with new skills
-    const finalProfile = await getUserProfile(userId);
-    return finalProfile;
-  });
+  // 3. If projects are provided, update projects table
+  if (projects && Array.isArray(projects)) {
+    // Delete existing project links
+    await prisma.project.deleteMany({
+      where: { userId }
+    });
+
+    // Insert new projects
+    for (const proj of projects) {
+      await prisma.project.create({
+        data: {
+          userId,
+          title: proj.title,
+          description: proj.description,
+          projectUrl: proj.projectUrl || '',
+          repoUrl: proj.repoUrl || ''
+        }
+      });
+    }
+  }
+
+  // Return the updated profile with new skills
+  const finalProfile = await getUserProfile(userId);
+  return finalProfile;
 };

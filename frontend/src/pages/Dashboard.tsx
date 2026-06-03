@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
@@ -7,6 +8,7 @@ import './Dashboard.css';
 
 export const Dashboard: React.FC = () => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
   // Mock post entries for developers
   const devPosts = [
@@ -60,8 +62,10 @@ export const Dashboard: React.FC = () => {
           </div>
 
           <div className="dc-nav-user">
-            <span className="dc-nav-user-badge">ROOT</span>
-            <span className="dc-nav-user-name">{user?.fullName || 'Developer'}</span>
+            <div className="dc-nav-user-info" onClick={() => navigate('/profile')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span className="dc-nav-user-badge">ROOT</span>
+              <span className="dc-nav-user-name">{user?.fullName || 'Developer'}</span>
+            </div>
             <Button variant="danger" className="dc-nav-logout-btn" onClick={logout}>
               <LogOut size={16} />
             </Button>
@@ -73,9 +77,17 @@ export const Dashboard: React.FC = () => {
       <div className="container dc-dashboard-content">
         {/* Left column: Profile card */}
         <aside className="dc-profile-aside">
-          <Card hoverable className="dc-profile-card">
-            <div className="dc-profile-avatar-wrapper">
-              <span className="dc-profile-avatar-emoji">⚙️</span>
+          <Card hoverable className="dc-profile-card" onClick={() => navigate('/profile')} style={{ cursor: 'pointer' }}>
+            <div className="dc-profile-avatar-wrapper" style={{ overflow: 'hidden' }}>
+              {user?.profile?.avatar_url ? (
+                <img 
+                  src={user.profile.avatar_url} 
+                  alt="Avatar" 
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                />
+              ) : (
+                <span className="dc-profile-avatar-emoji">⚙️</span>
+              )}
             </div>
             <h3 className="dc-profile-name">{user?.fullName || 'John Doe'}</h3>
             <p className="dc-profile-headline">{user?.profile?.headline || 'Full Stack Engineer'}</p>

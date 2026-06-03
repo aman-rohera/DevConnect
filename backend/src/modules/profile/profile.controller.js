@@ -47,14 +47,18 @@ export const getProfileById = async (req, res) => {
 };
 
 export const updateOwnProfile = async (req, res) => {
-  const { headline, bio, avatarUrl, skills } = req.body;
+  const { headline, bio, avatarUrl, skills, projects, education, experience, certificates } = req.body;
 
   try {
     const updatedProfile = await profileService.updateUserProfile(req.user.id, {
       headline,
       bio,
       avatarUrl,
-      skills
+      skills,
+      projects,
+      education,
+      experience,
+      certificates
     });
     
     return res.status(200).json({

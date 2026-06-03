@@ -15,6 +15,7 @@ interface AuthContextType {
   resetPassword: (password: string) => Promise<void>;
   logout: () => void;
   clearError: () => void;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -27,6 +28,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Clear errors helper
   const clearError = () => setError(null);
+
+  // Expose function to refresh user from backend
+  const refreshUser = async () => {
+    const storedToken = localStorage.getItem('dc_token');
+    if (!storedToken) return;
+    try {
+      const response = await api.get<ApiResponse<{ user: User }>>('/auth/me', { token: storedToken });
+      if (response.success && response.data.user) {
+        setUser(response.data.user);
+      }
+    } catch (err) {
+      console.warn('Failed to refresh user profile:', err);
+    }
+  };
 
   // Restore session on application load
   useEffect(() => {
@@ -187,6 +202,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         resetPassword,
         logout,
         clearError,
+        refreshUser,
       }}
     >
       {children}

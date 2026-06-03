@@ -1,3 +1,33 @@
+export interface ProjectItem {
+  id?: string;
+  title: string;
+  description: string;
+  projectUrl?: string;
+  repoUrl?: string;
+}
+
+export interface ExperienceItem {
+  company: string;
+  role: string;
+  startDate: string;
+  endDate?: string;
+  description?: string;
+}
+
+export interface EducationItem {
+  school: string;
+  degree: string;
+  startYear: string;
+  endYear?: string;
+}
+
+export interface CertificateItem {
+  name: string;
+  issuer: string;
+  issueDate?: string;
+  link?: string;
+}
+
 export interface Profile {
   id: string;
   full_name: string;
@@ -8,6 +38,10 @@ export interface Profile {
   linkedin_url?: string;
   avatar_url?: string;
   updated_at: string;
+  projects?: ProjectItem[];
+  experience?: ExperienceItem[];
+  education?: EducationItem[];
+  certificates?: CertificateItem[];
 }
 
 export interface User {
