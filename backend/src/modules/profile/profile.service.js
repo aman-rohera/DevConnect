@@ -1,4 +1,5 @@
 import prisma from '../../config/db.js';
+import { syncUserToNeo4j } from '../recommendation/recommendation.service.js';
 
 export const getUserProfile = async (userId) => {
   const profile = await prisma.user.findUnique({
@@ -95,6 +96,14 @@ export const updateUserProfile = async (userId, data) => {
         }
       });
     }
+  }
+
+  // 4. Sync profile to Neo4j for recommendations
+  try {
+    await syncUserToNeo4j(userId);
+  } catch (err) {
+    console.error('Failed to sync user to neo4j:', err);
+    // Don't fail the update if neo4j is down
   }
 
   // Return the updated profile with new skills

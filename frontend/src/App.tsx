@@ -5,6 +5,7 @@ import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { Dashboard } from './pages/Dashboard';
 import Profile from './pages/Profile';
+import Recommendations from './pages/Recommendations';
 import { ResetPassword } from './pages/ResetPassword';
 import { SkeletonLoader } from './components/common/SkeletonLoader';
 import { Card } from './components/common/Card';
@@ -111,6 +112,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <Profile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/recommendations"
+            element={
+              <ProtectedRoute>
+                <Recommendations />
               </ProtectedRoute>
             }
           />

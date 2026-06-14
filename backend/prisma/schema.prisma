@@ -24,6 +24,9 @@ model User {
   
   skills        UserSkill[]
   projects      Project[]
+  
+  sentConnections     Connection[] @relation("SentConnections")
+  receivedConnections Connection[] @relation("ReceivedConnections")
 
   @@map("users")
 }
@@ -59,4 +62,19 @@ model Project {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("projects")
+}
+
+model Connection {
+  id         String   @id @default(uuid()) @db.Uuid
+  senderId   String   @map("sender_id") @db.Uuid
+  receiverId String   @map("receiver_id") @db.Uuid
+  status     String   @default("PENDING") // PENDING, ACCEPTED, REJECTED
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  sender     User     @relation("SentConnections", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver   User     @relation("ReceivedConnections", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@unique([senderId, receiverId])
+  @@map("connections")
 }

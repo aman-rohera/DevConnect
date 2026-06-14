@@ -4,6 +4,8 @@ import './src/config/db.js';
 import dotenv from 'dotenv';
 import authRoutes from './src/modules/auth/auth.routes.js';
 import profileRoutes from './src/modules/profile/profile.routes.js';
+import recommendationRoutes from './src/modules/recommendation/recommendation.routes.js';
+import connectionRoutes from './src/modules/connection/connection.routes.js';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -18,6 +20,8 @@ app.use(express.json());  // Parses incoming request bodies containing JSON data
 // Mount Module Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/profile', profileRoutes);
+app.use('/api/recommendations', recommendationRoutes);
+app.use('/api/connections', connectionRoutes);
 
 // Basic Health Check Route
 app.get('/api/health', (req, res) => {

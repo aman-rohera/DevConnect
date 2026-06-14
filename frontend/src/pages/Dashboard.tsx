@@ -51,10 +51,10 @@ export const Dashboard: React.FC = () => {
               <Globe size={18} />
               <span>Feed</span>
             </a>
-            <a href="#network" className="dc-nav-link">
+            <div className="dc-nav-link" onClick={() => navigate('/recommendations')} style={{ cursor: 'pointer' }}>
               <Users size={18} />
               <span>Network</span>
-            </a>
+            </div>
             <a href="#jobs" className="dc-nav-link">
               <Briefcase size={18} />
               <span>Jobs</span>
