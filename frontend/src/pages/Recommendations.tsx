@@ -8,6 +8,8 @@ import { Terminal, LogOut, Globe, Users, Briefcase, RefreshCw, UserPlus, Check, 
 import '../pages/Dashboard.css'; // Inherit Dashboard styles
 import './Recommendations.css'; // Specific tweaks if needed
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
 interface RecommendedUser {
   id: string;
   fullName: string;
@@ -42,7 +44,7 @@ export const Recommendations: React.FC = () => {
 
   const fetchPendingRequests = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/connections/pending', {
+      const response = await fetch(`${API_BASE_URL}/connections/pending`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
@@ -56,7 +58,7 @@ export const Recommendations: React.FC = () => {
 
   const fetchConnections = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/connections', {
+      const response = await fetch(`${API_BASE_URL}/connections`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
@@ -79,7 +81,7 @@ export const Recommendations: React.FC = () => {
     try {
       setLoading(true);
       setError('');
-      const response = await fetch('http://localhost:5000/api/recommendations', {
+      const response = await fetch(`${API_BASE_URL}/recommendations`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -100,7 +102,7 @@ export const Recommendations: React.FC = () => {
   const syncProfile = async () => {
     try {
       setSyncing(true);
-      await fetch('http://localhost:5000/api/recommendations/sync', {
+      await fetch(`${API_BASE_URL}/recommendations/sync`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -119,7 +121,7 @@ export const Recommendations: React.FC = () => {
     setConnectionStatuses(prev => ({ ...prev, [targetUserId]: 'Pending...' }));
     
     try {
-      const response = await fetch('http://localhost:5000/api/connections/request', {
+      const response = await fetch(`${API_BASE_URL}/connections/request`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -151,7 +153,7 @@ export const Recommendations: React.FC = () => {
 
   const handleRespondToRequest = async (connectionId: string, action: 'ACCEPT' | 'REJECT') => {
     try {
-      const response = await fetch(`http://localhost:5000/api/connections/${connectionId}/respond`, {
+      const response = await fetch(`${API_BASE_URL}/connections/${connectionId}/respond`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

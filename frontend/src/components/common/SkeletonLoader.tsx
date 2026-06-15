@@ -7,6 +7,7 @@ interface SkeletonLoaderProps {
   height?: string | number;
   count?: number;
   className?: string;
+  style?: React.CSSProperties;
 }
 
 export const SkeletonLoader: React.FC<SkeletonLoaderProps> = ({
@@ -15,6 +16,7 @@ export const SkeletonLoader: React.FC<SkeletonLoaderProps> = ({
   height,
   count = 1,
   className = '',
+  style,
 }) => {
   const elements = Array.from({ length: count });
 
@@ -31,7 +33,7 @@ export const SkeletonLoader: React.FC<SkeletonLoaderProps> = ({
         <div
           key={index}
           className={`dc-skeleton dc-skeleton--${variant} ${className}`}
-          style={getStyle()}
+          style={{ ...getStyle(), ...style }}
           data-testid="skeleton-element"
         />
       ))}

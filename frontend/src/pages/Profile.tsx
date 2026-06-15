@@ -576,7 +576,7 @@ export const Profile: React.FC = () => {
                     onChange={e => setNewExp({ ...newExp, endDate: e.target.value })} 
                   />
                 </div>
-                <div style={{ toggle: '12px' }}>
+                <div style={{ marginBottom: '12px' }}>
                   <Input 
                     label="Short Description" 
                     placeholder="Describe your responsibilities..." 
