@@ -18,7 +18,7 @@
   gap: 16px;
 }
 
-.net-linkedin-card {
+.net-member-card {
   padding: 0 !important; /* Override standard card padding to allow full-width banner */
   overflow: hidden;
   display: flex;
@@ -26,7 +26,7 @@
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.net-linkedin-card:hover {
+.net-member-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
 }

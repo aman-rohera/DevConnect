@@ -355,7 +355,7 @@ export const Profile: React.FC = () => {
           {error && <div className="dc-alert dc-alert-error">{error}</div>}
           {success && <div className="dc-alert dc-alert-success">{success}</div>}
 
-          {/* LinkedIn Header Card */}
+          {/* Profile Header Card */}
           <Card className="dc-profile-header-card">
             <div className="dc-profile-banner" />
             <div className="dc-profile-header-content">

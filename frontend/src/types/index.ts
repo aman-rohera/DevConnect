@@ -35,7 +35,6 @@ export interface Profile {
   skills: string[];
   bio?: string;
   github_url?: string;
-  linkedin_url?: string;
   avatar_url?: string;
   updated_at: string;
   projects?: ProjectItem[];

@@ -326,7 +326,7 @@ export const Recommendations: React.FC = () => {
           <div className="net-grid">
             {loading ? (
               [1, 2, 3, 4].map(i => (
-                <Card key={i} className="dc-post-card net-linkedin-card">
+                <Card key={i} className="dc-post-card net-member-card">
                   <div className="net-card-banner loading"></div>
                   <div className="net-card-avatar-container">
                     <SkeletonLoader variant="circle" width={72} height={72} />
@@ -350,7 +350,7 @@ export const Recommendations: React.FC = () => {
               </div>
             ) : (
               recommendations.map((rec, idx) => (
-                <Card key={idx} className="dc-post-card net-linkedin-card">
+                <Card key={idx} className="dc-post-card net-member-card">
                   <div className="net-card-banner"></div>
                   <div className="net-card-avatar-container">
                     {rec.user.avatarUrl ? (
