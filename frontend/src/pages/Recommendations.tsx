@@ -8,7 +8,11 @@ import { Terminal, LogOut, Globe, Users, Briefcase, RefreshCw, UserPlus, Check, 
 import '../pages/Dashboard.css'; // Inherit Dashboard styles
 import './Recommendations.css'; // Specific tweaks if needed
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL ||
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:5000/api'
+    : 'https://devconnect-11qm.onrender.com/api');
 
 interface RecommendedUser {
   id: string;
