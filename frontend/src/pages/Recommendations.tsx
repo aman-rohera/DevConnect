@@ -25,6 +25,7 @@ interface Recommendation {
   user: RecommendedUser;
   commonSkills: number;
   sharedSkills: string[];
+  mutualConnections: number;
 }
 
 export const Recommendations: React.FC = () => {
@@ -355,20 +356,36 @@ export const Recommendations: React.FC = () => {
                 </Card>
               </div>
             ) : (
-              recommendations.map((rec, idx) => (
-                <Card key={idx} className="dc-post-card net-member-card">
+              // Filter out users we are already connected to or have pending requests with
+              recommendations
+                .filter(rec => {
+                  const status = connectionStatuses[rec.user.id];
+                  return status !== 'Connected' && status !== 'Pending...';
+                })
+                .map((rec, idx) => (
+                  <Card key={rec.user.id} className="net-linkedin-card">
                   <div className="net-card-banner"></div>
-                  <div className="net-card-avatar-container">
+                  
+                  <div className="net-card-avatar-wrapper" onClick={() => navigate(`/profile/${rec.user.id}`)} style={{ cursor: 'pointer' }}>
                     {rec.user.avatarUrl ? (
-                        <img src={rec.user.avatarUrl} alt={rec.user.fullName} className="net-card-avatar" />
+                      <img src={rec.user.avatarUrl} alt="Avatar" className="net-card-avatar" />
                     ) : (
-                        <div className="net-card-avatar fallback">💻</div>
+                      <div className="net-card-avatar-fallback">💻</div>
                     )}
                   </div>
-                  
+                    
                   <div className="net-card-content">
-                    <h4 className="net-card-name">{rec.user.fullName}</h4>
+                    <h4 className="net-card-name" onClick={() => navigate(`/profile/${rec.user.id}`)} style={{ cursor: 'pointer' }}>
+                      {rec.user.fullName}
+                    </h4>
                     <p className="net-card-headline">{rec.user.headline || 'Software Engineer'}</p>
+                    
+                    {rec.mutualConnections > 0 && (
+                      <p style={{ fontSize: '11px', color: 'hsl(var(--text-secondary))', marginTop: '-8px', marginBottom: '12px' }}>
+                        <Users size={10} style={{ display: 'inline', marginRight: '4px' }} />
+                        {rec.mutualConnections} mutual connection{rec.mutualConnections !== 1 ? 's' : ''}
+                      </p>
+                    )}
                     
                     <div className="net-card-stats">
                       <span className="net-match-badge">

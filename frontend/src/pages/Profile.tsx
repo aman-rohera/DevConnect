@@ -1,23 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { uploadProfilePhoto, uploadMediaFile } from '../utils/cloudinary';
 import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
 import { Input } from '../components/common/Input';
-import { 
-  Terminal, 
-  Globe, 
-  Users, 
-  Briefcase, 
-  LogOut, 
-  Edit3, 
-  Check, 
-  X, 
-  Plus, 
-  Code, 
-  BookOpen, 
+import {
+  Terminal,
+  Globe,
+  Users,
+  Briefcase,
+  LogOut,
+  Edit3,
+  Check,
+  X,
+  Plus,
+  Code,
+  BookOpen,
   ExternalLink,
   MapPin,
   Link as LinkIcon,
@@ -29,7 +29,6 @@ import {
   GraduationCap,
   Camera,
   Image as ImageIcon,
-  Video as VideoIcon,
   Trash2,
   ChevronLeft,
   ChevronRight,
@@ -73,6 +72,9 @@ interface CertificateItem {
 export const Profile: React.FC = () => {
   const { user, logout, refreshUser } = useAuth();
   const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+
+  const isOwnProfile = !id || id === user?.id;
 
   // Profile basic fields state
   const [fullName, setFullName] = useState('');
@@ -147,14 +149,14 @@ export const Profile: React.FC = () => {
   const [selectedFiles, setSelectedFiles] = useState<{ file: File; previewUrl: string; type: 'image' | 'video' }[]>([]);
   const [previewIndex, setPreviewIndex] = useState(0);
   const [uploadingPost, setUploadingPost] = useState(false);
-  
+
   // Mention search states
   const [showMentionDropdown, setShowMentionDropdown] = useState(false);
   const [mentionQuery, setMentionQuery] = useState('');
   const [mentionPosition, setMentionPosition] = useState({ top: 0, left: 0 });
   const [textareaCursorPos, setTextareaCursorPos] = useState(0);
   const postTextareaRef = useRef<HTMLTextAreaElement>(null);
-  
+
   // Media carousel active indexes for posts list
   const [activeMediaIndexes, setActiveMediaIndexes] = useState<Record<string, number>>({});
 
@@ -163,6 +165,7 @@ export const Profile: React.FC = () => {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
+  const [connectionStatus, setConnectionStatus] = useState<string>('Connect');
 
   // Interactive mock members sidebar state
   const [mockMembers, setMockMembers] = useState([
@@ -195,7 +198,8 @@ export const Profile: React.FC = () => {
       setFetching(true);
       setError('');
       try {
-        const response = await api.get<ApiResponse<any>>('/profile/me');
+        const endpoint = isOwnProfile ? '/profile/me' : `/profile/${id}`;
+        const response = await api.get<ApiResponse<any>>(endpoint);
         if (response.success && response.data) {
           const profileData = response.data;
           setFullName(profileData.fullName || '');
@@ -207,7 +211,7 @@ export const Profile: React.FC = () => {
           setExperience(profileData.experience || []);
           setEducation(profileData.education || []);
           setCertificateList(profileData.certificates || []);
-          
+
           if (profileData.createdAt) {
             const date = new Date(profileData.createdAt);
             setCreatedAtDate(date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }));
@@ -221,8 +225,41 @@ export const Profile: React.FC = () => {
       }
     };
 
+    const fetchConnectionStatus = async () => {
+      if (isOwnProfile || !id) return;
+      try {
+        const response = await api.get<ApiResponse<any>>('/connections');
+        if (response.success && response.data) {
+          const connections = response.data.connections || [];
+          const conn = connections.find((c: any) => c.senderId === id || c.receiverId === id);
+          if (conn) {
+            if (conn.status === 'PENDING') setConnectionStatus('Pending...');
+            else if (conn.status === 'ACCEPTED') setConnectionStatus('Connected');
+          } else {
+            setConnectionStatus('Connect');
+          }
+        }
+      } catch (e) {
+        console.error('Failed to fetch connections', e);
+      }
+    };
+
     fetchProfile();
-  }, []);
+    fetchConnectionStatus();
+  }, [id, isOwnProfile]);
+
+  const handleConnectRequest = async () => {
+    if (!id || connectionStatus !== 'Connect') return;
+    setConnectionStatus('Pending...');
+    try {
+      const response = await api.post<ApiResponse<any>>('/connections/request', { receiverId: id });
+      if (!response.success) {
+        setConnectionStatus('Connect');
+      }
+    } catch (e) {
+      setConnectionStatus('Connect');
+    }
+  };
 
   // Post Actions & Carousel Navigation
   const handleLikePost = (postId: string) => {
@@ -278,19 +315,19 @@ export const Profile: React.FC = () => {
   const handleCaptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
     setPostCaption(value);
-    
+
     // Check cursor position to trigger mentions suggestions
     const cursorPos = e.target.selectionStart;
     setTextareaCursorPos(cursorPos);
-    
+
     const textBeforeCursor = value.slice(0, cursorPos);
     const lastAtPos = textBeforeCursor.lastIndexOf('@');
-    
+
     if (lastAtPos !== -1 && lastAtPos >= textBeforeCursor.lastIndexOf(' ')) {
       const query = textBeforeCursor.slice(lastAtPos + 1);
       setMentionQuery(query);
       setShowMentionDropdown(true);
-      
+
       // Calculate cursor position for absolute dropdown styling
       const textarea = e.target;
       const { offsetTop, offsetLeft } = textarea;
@@ -305,17 +342,17 @@ export const Profile: React.FC = () => {
 
   const handleMentionSelect = (memberName: string) => {
     if (!postTextareaRef.current) return;
-    
+
     const formattedName = memberName.replace(/\s+/g, '_'); // Replace spaces with underscores for easier tagging e.g. @Aisha_Vance
     const value = postCaption;
     const textBeforeCursor = value.slice(0, textareaCursorPos);
     const textAfterCursor = value.slice(textareaCursorPos);
     const lastAtPos = textBeforeCursor.lastIndexOf('@');
-    
+
     const newValue = value.slice(0, lastAtPos) + '@' + formattedName + ' ' + textAfterCursor;
     setPostCaption(newValue);
     setShowMentionDropdown(false);
-    
+
     // Refocus on textarea and set cursor position after inserted mention
     setTimeout(() => {
       if (postTextareaRef.current) {
@@ -337,7 +374,7 @@ export const Profile: React.FC = () => {
       const type = file.type.startsWith('video/') ? 'video' : 'image';
       newFiles.push({ file, previewUrl, type });
     }
-    
+
     setSelectedFiles([...selectedFiles, ...newFiles]);
     setPreviewIndex(0);
   };
@@ -363,13 +400,13 @@ export const Profile: React.FC = () => {
   const handlePostSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!postCaption.trim() && selectedFiles.length === 0) return;
-    
+
     setUploadingPost(true);
     setError('');
-    
+
     try {
       const uploadedMedia: { url: string; type: 'image' | 'video' }[] = [];
-      
+
       // Upload files sequentially to Cloudinary
       for (const fileObj of selectedFiles) {
         const result = await uploadMediaFile(fileObj.file);
@@ -397,7 +434,7 @@ export const Profile: React.FC = () => {
 
       // Add to posts state
       setPosts([newPost, ...posts]);
-      
+
       // Clean up local blob URLs
       selectedFiles.forEach(f => URL.revokeObjectURL(f.previewUrl));
 
@@ -581,7 +618,7 @@ export const Profile: React.FC = () => {
               <Globe size={18} />
               <span>Feed</span>
             </a>
-            <a href="#network" className="dc-nav-link">
+            <a href="#network" className="dc-nav-link" onClick={(e) => { e.preventDefault(); navigate('/recommendations'); }}>
               <Users size={18} />
               <span>Network</span>
             </a>
@@ -614,7 +651,7 @@ export const Profile: React.FC = () => {
           <Card className="dc-profile-header-card">
             <div className="dc-profile-banner" />
             <div className="dc-profile-header-content">
-              <div 
+              <div
                 className={`dc-profile-avatar-outer ${isEditing ? 'dc-editable-avatar' : ''}`}
                 onClick={handleAvatarClick}
               >
@@ -623,14 +660,14 @@ export const Profile: React.FC = () => {
                 ) : (
                   <span className="dc-profile-avatar-fallback">💻</span>
                 )}
-                
+
                 {isEditing && (
                   <>
                     <div className="dc-avatar-upload-overlay">
                       <Camera size={20} />
                       <span style={{ marginTop: '4px' }}>Upload Photo</span>
                     </div>
-                    <input 
+                    <input
                       type="file"
                       ref={fileInputRef}
                       onChange={handleFileChange}
@@ -653,7 +690,7 @@ export const Profile: React.FC = () => {
                   <div className="dc-profile-main-details">
                     <h1 className="dc-profile-name-title">{fullName || 'Developer Profile'}</h1>
                     <p className="dc-profile-headline-text">{headline || 'Software Engineer'}</p>
-                    
+
                     <div className="dc-profile-extra-meta">
                       <span className="dc-profile-meta-item">
                         <MapPin size={14} />
@@ -672,14 +709,36 @@ export const Profile: React.FC = () => {
                     </div>
                   </div>
 
-                  <Button 
-                    variant="primary" 
-                    onClick={() => setIsEditing(true)} 
-                    style={{ gap: '6px', padding: '8px 16px', fontSize: '13px' }}
-                  >
-                    <Edit3 size={14} />
-                    <span>Edit Profile</span>
-                  </Button>
+                  {isOwnProfile ? (
+                    <Button
+                      variant="primary"
+                      onClick={() => setIsEditing(true)}
+                      style={{ gap: '6px', padding: '8px 16px', fontSize: '13px' }}
+                    >
+                      <Edit3 size={14} />
+                      <span>Edit Profile</span>
+                    </Button>
+                  ) : (
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                      <Button
+                        variant={connectionStatus === 'Connected' ? "secondary" : "primary"}
+                        onClick={handleConnectRequest}
+                        disabled={connectionStatus !== 'Connect'}
+                        style={{ gap: '6px', padding: '8px 24px', borderRadius: '20px', fontWeight: 600, fontSize: '14px', ...(connectionStatus === 'Connected' ? { background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', borderColor: 'rgba(16, 185, 129, 0.2)' } : {}) }}
+                      >
+                        {connectionStatus === 'Connect' && <UserPlus size={16} />}
+                        {connectionStatus === 'Connected' && <Check size={16} />}
+                        <span>{connectionStatus}</span>
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        style={{ gap: '6px', padding: '8px 24px', borderRadius: '20px', fontWeight: 600, fontSize: '14px', background: 'transparent', border: '1px solid hsl(var(--primary))', color: 'hsl(var(--primary))' }}
+                      >
+                        <MessageSquare size={16} />
+                        <span>Message</span>
+                      </Button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="dc-profile-form">
@@ -759,10 +818,10 @@ export const Profile: React.FC = () => {
                       }
                     }}
                   />
-                  <Button 
-                    type="button" 
-                    variant="primary" 
-                    onClick={() => handleAddSkill()} 
+                  <Button
+                    type="button"
+                    variant="primary"
+                    onClick={() => handleAddSkill()}
                     style={{ width: 'auto', gap: '4px' }}
                   >
                     <Plus size={14} />
@@ -779,9 +838,9 @@ export const Profile: React.FC = () => {
                     <Code size={12} style={{ color: 'hsl(var(--primary))' }} />
                     <span>{skill}</span>
                     {isEditing && (
-                      <button 
-                        type="button" 
-                        className="dc-profile-skill-remove" 
+                      <button
+                        type="button"
+                        className="dc-profile-skill-remove"
                         onClick={() => handleRemoveSkill(skill)}
                       >
                         <X size={12} />
@@ -804,39 +863,39 @@ export const Profile: React.FC = () => {
                   <span className="dc-profile-sub-form-title">Add Work Experience</span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-                  <Input 
-                    label="Company Name" 
-                    placeholder="e.g. Google" 
-                    value={newExp.company} 
-                    onChange={e => setNewExp({ ...newExp, company: e.target.value })} 
+                  <Input
+                    label="Company Name"
+                    placeholder="e.g. Google"
+                    value={newExp.company}
+                    onChange={e => setNewExp({ ...newExp, company: e.target.value })}
                   />
-                  <Input 
-                    label="Role / Title" 
-                    placeholder="e.g. Frontend Engineer" 
-                    value={newExp.role} 
-                    onChange={e => setNewExp({ ...newExp, role: e.target.value })} 
+                  <Input
+                    label="Role / Title"
+                    placeholder="e.g. Frontend Engineer"
+                    value={newExp.role}
+                    onChange={e => setNewExp({ ...newExp, role: e.target.value })}
                   />
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-                  <Input 
-                    label="Start Date" 
-                    placeholder="e.g. June 2024" 
-                    value={newExp.startDate} 
-                    onChange={e => setNewExp({ ...newExp, startDate: e.target.value })} 
+                  <Input
+                    label="Start Date"
+                    placeholder="e.g. June 2024"
+                    value={newExp.startDate}
+                    onChange={e => setNewExp({ ...newExp, startDate: e.target.value })}
                   />
-                  <Input 
-                    label="End Date" 
-                    placeholder="e.g. Present or Dec 2025" 
-                    value={newExp.endDate} 
-                    onChange={e => setNewExp({ ...newExp, endDate: e.target.value })} 
+                  <Input
+                    label="End Date"
+                    placeholder="e.g. Present or Dec 2025"
+                    value={newExp.endDate}
+                    onChange={e => setNewExp({ ...newExp, endDate: e.target.value })}
                   />
                 </div>
                 <div style={{ marginBottom: '12px' }}>
-                  <Input 
-                    label="Short Description" 
-                    placeholder="Describe your responsibilities..." 
-                    value={newExp.description} 
-                    onChange={e => setNewExp({ ...newExp, description: e.target.value })} 
+                  <Input
+                    label="Short Description"
+                    placeholder="Describe your responsibilities..."
+                    value={newExp.description}
+                    onChange={e => setNewExp({ ...newExp, description: e.target.value })}
                   />
                 </div>
                 <Button type="button" variant="primary" style={{ width: 'auto', marginTop: '12px' }} onClick={handleAddExperience}>
@@ -889,31 +948,31 @@ export const Profile: React.FC = () => {
                   <span className="dc-profile-sub-form-title">Add School / College Details</span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-                  <Input 
-                    label="School / University" 
-                    placeholder="e.g. Mumbai University" 
-                    value={newEdu.school} 
-                    onChange={e => setNewEdu({ ...newEdu, school: e.target.value })} 
+                  <Input
+                    label="School / University"
+                    placeholder="e.g. Mumbai University"
+                    value={newEdu.school}
+                    onChange={e => setNewEdu({ ...newEdu, school: e.target.value })}
                   />
-                  <Input 
-                    label="Degree / Field of Study" 
-                    placeholder="e.g. B.Sc. IT" 
-                    value={newEdu.degree} 
-                    onChange={e => setNewEdu({ ...newEdu, degree: e.target.value })} 
+                  <Input
+                    label="Degree / Field of Study"
+                    placeholder="e.g. B.Sc. IT"
+                    value={newEdu.degree}
+                    onChange={e => setNewEdu({ ...newEdu, degree: e.target.value })}
                   />
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-                  <Input 
-                    label="Start Year" 
-                    placeholder="e.g. 2021" 
-                    value={newEdu.startYear} 
-                    onChange={e => setNewEdu({ ...newEdu, startYear: e.target.value })} 
+                  <Input
+                    label="Start Year"
+                    placeholder="e.g. 2021"
+                    value={newEdu.startYear}
+                    onChange={e => setNewEdu({ ...newEdu, startYear: e.target.value })}
                   />
-                  <Input 
-                    label="End Year" 
-                    placeholder="e.g. 2024" 
-                    value={newEdu.endYear} 
-                    onChange={e => setNewEdu({ ...newEdu, endYear: e.target.value })} 
+                  <Input
+                    label="End Year"
+                    placeholder="e.g. 2024"
+                    value={newEdu.endYear}
+                    onChange={e => setNewEdu({ ...newEdu, endYear: e.target.value })}
                   />
                 </div>
                 <Button type="button" variant="primary" style={{ width: 'auto' }} onClick={handleAddEducation}>
@@ -965,31 +1024,31 @@ export const Profile: React.FC = () => {
                   <span className="dc-profile-sub-form-title">Add Certificate details</span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-                  <Input 
-                    label="Certificate Name" 
-                    placeholder="e.g. AWS Cloud Practitioner" 
-                    value={newCert.name} 
-                    onChange={e => setNewCert({ ...newCert, name: e.target.value })} 
+                  <Input
+                    label="Certificate Name"
+                    placeholder="e.g. AWS Cloud Practitioner"
+                    value={newCert.name}
+                    onChange={e => setNewCert({ ...newCert, name: e.target.value })}
                   />
-                  <Input 
-                    label="Issuing Authority" 
-                    placeholder="e.g. Amazon Web Services" 
-                    value={newCert.issuer} 
-                    onChange={e => setNewCert({ ...newCert, issuer: e.target.value })} 
+                  <Input
+                    label="Issuing Authority"
+                    placeholder="e.g. Amazon Web Services"
+                    value={newCert.issuer}
+                    onChange={e => setNewCert({ ...newCert, issuer: e.target.value })}
                   />
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-                  <Input 
-                    label="Date of Issue" 
-                    placeholder="e.g. July 2025" 
-                    value={newCert.issueDate} 
-                    onChange={e => setNewCert({ ...newCert, issueDate: e.target.value })} 
+                  <Input
+                    label="Date of Issue"
+                    placeholder="e.g. July 2025"
+                    value={newCert.issueDate}
+                    onChange={e => setNewCert({ ...newCert, issueDate: e.target.value })}
                   />
-                  <Input 
-                    label="Verification Link" 
-                    placeholder="e.g. https://aws.credentials.com/..." 
-                    value={newCert.link} 
-                    onChange={e => setNewCert({ ...newCert, link: e.target.value })} 
+                  <Input
+                    label="Verification Link"
+                    placeholder="e.g. https://aws.credentials.com/..."
+                    value={newCert.link}
+                    onChange={e => setNewCert({ ...newCert, link: e.target.value })}
                   />
                 </div>
                 <Button type="button" variant="primary" style={{ width: 'auto' }} onClick={handleAddCertificate}>
@@ -1040,31 +1099,31 @@ export const Profile: React.FC = () => {
                   <span className="dc-profile-sub-form-title">Add Featured Project</span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-                  <Input 
-                    label="Project Title" 
-                    placeholder="e.g. Chat Application" 
-                    value={newProject.title} 
-                    onChange={e => setNewProject({ ...newProject, title: e.target.value })} 
+                  <Input
+                    label="Project Title"
+                    placeholder="e.g. Chat Application"
+                    value={newProject.title}
+                    onChange={e => setNewProject({ ...newProject, title: e.target.value })}
                   />
-                  <Input 
-                    label="Brief Description" 
-                    placeholder="e.g. Built using React and socket.io" 
-                    value={newProject.description} 
-                    onChange={e => setNewProject({ ...newProject, description: e.target.value })} 
+                  <Input
+                    label="Brief Description"
+                    placeholder="e.g. Built using React and socket.io"
+                    value={newProject.description}
+                    onChange={e => setNewProject({ ...newProject, description: e.target.value })}
                   />
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-                  <Input 
-                    label="Repository URL" 
-                    placeholder="e.g. https://github.com/..." 
-                    value={newProject.repoUrl} 
-                    onChange={e => setNewProject({ ...newProject, repoUrl: e.target.value })} 
+                  <Input
+                    label="Repository URL"
+                    placeholder="e.g. https://github.com/..."
+                    value={newProject.repoUrl}
+                    onChange={e => setNewProject({ ...newProject, repoUrl: e.target.value })}
                   />
-                  <Input 
-                    label="Live Demo URL" 
-                    placeholder="e.g. https://chat.live.com" 
-                    value={newProject.projectUrl} 
-                    onChange={e => setNewProject({ ...newProject, projectUrl: e.target.value })} 
+                  <Input
+                    label="Live Demo URL"
+                    placeholder="e.g. https://chat.live.com"
+                    value={newProject.projectUrl}
+                    onChange={e => setNewProject({ ...newProject, projectUrl: e.target.value })}
                   />
                 </div>
                 <Button type="button" variant="primary" style={{ width: 'auto' }} onClick={handleAddProject}>
@@ -1137,16 +1196,16 @@ export const Profile: React.FC = () => {
           {!isEditing && (
             <div className="dc-posts-section" style={{ marginTop: '24px' }}>
               <h2 className="dc-profile-section-title" style={{ marginBottom: '16px' }}>Developer Activity</h2>
-              
+
               {posts.map((post) => {
                 const activeMediaIndex = activeMediaIndexes[post.id] || 0;
                 const mediaCount = post.media.length;
-                
+
                 return (
                   <Card key={post.id} className="dc-post-card" style={{ padding: '20px', marginBottom: '16px', border: '1px solid hsl(var(--border))' }}>
                     {/* Post Header */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
-                      <div style={{ width: '44px', height: '44px', borderRadius: '50%', overflow: 'hidden', background: 'hsl(var(--surface-light))', border: '1.5px solid hsl(var(--border))', display: 'flex', alignItems: 'center', justify: 'center', flexShrink: 0 }}>
+                      <div style={{ width: '44px', height: '44px', borderRadius: '50%', overflow: 'hidden', background: 'hsl(var(--surface-light))', border: '1.5px solid hsl(var(--border))', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         {post.author.avatar || (post.author.name === (user?.fullName || fullName) && avatarUrl) ? (
                           <img src={post.author.name === (user?.fullName || fullName) && avatarUrl ? avatarUrl : post.author.avatar} alt="Author" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         ) : (
@@ -1183,17 +1242,17 @@ export const Profile: React.FC = () => {
                             )}
                           </div>
                         ))}
-                        
+
                         {/* Navigation arrows */}
                         {mediaCount > 1 && (
                           <>
-                            <button type="button" className="dc-swiper-btn prev" onClick={() => handlePrevMedia(post.id, mediaCount)} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', background: 'rgba(15, 23, 42, 0.65)', border: '1px solid rgba(255, 255, 255, 0.1)', color: '#fff', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justify: 'center', cursor: 'pointer', zIndex: 10 }}>
+                            <button type="button" className="dc-swiper-btn prev" onClick={() => handlePrevMedia(post.id, mediaCount)} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', background: 'rgba(15, 23, 42, 0.65)', border: '1px solid rgba(255, 255, 255, 0.1)', color: '#fff', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 10 }}>
                               <ChevronLeft size={16} />
                             </button>
-                            <button type="button" className="dc-swiper-btn next" onClick={() => handleNextMedia(post.id, mediaCount)} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'rgba(15, 23, 42, 0.65)', border: '1px solid rgba(255, 255, 255, 0.1)', color: '#fff', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justify: 'center', cursor: 'pointer', zIndex: 10 }}>
+                            <button type="button" className="dc-swiper-btn next" onClick={() => handleNextMedia(post.id, mediaCount)} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'rgba(15, 23, 42, 0.65)', border: '1px solid rgba(255, 255, 255, 0.1)', color: '#fff', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 10 }}>
                               <ChevronRight size={16} />
                             </button>
-                            
+
                             {/* Index dots */}
                             <div style={{ position: 'absolute', bottom: '12px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '6px', zIndex: 10 }}>
                               {post.media.map((_, i) => (
@@ -1211,7 +1270,7 @@ export const Profile: React.FC = () => {
                         <ThumbsUp size={16} style={{ fill: post.hasLiked ? 'hsl(var(--primary) / 0.2)' : 'none' }} />
                         <span>{post.likes} Like{post.likes !== 1 ? 's' : ''}</span>
                       </button>
-                      
+
                       <button style={{ background: 'transparent', border: 'none', color: 'hsl(var(--text-secondary))', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer', fontWeight: 500, padding: 0 }}>
                         <MessageSquare size={16} />
                         <span>{post.commentsCount} Comment{post.commentsCount !== 1 ? 's' : ''}</span>
@@ -1231,19 +1290,19 @@ export const Profile: React.FC = () => {
           {/* Form Actions */}
           {isEditing && (
             <div className="dc-profile-actions" style={{ justifyContent: 'flex-end', marginTop: '24px', paddingBottom: '24px' }}>
-              <Button 
-                type="button" 
-                variant="secondary" 
-                onClick={() => setIsEditing(false)} 
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setIsEditing(false)}
                 style={{ gap: '6px' }}
               >
                 <X size={14} />
                 <span>Cancel</span>
               </Button>
-              <Button 
-                type="button" 
-                variant="primary" 
-                disabled={loading} 
+              <Button
+                type="button"
+                variant="primary"
+                disabled={loading}
                 onClick={handleSave}
                 style={{ gap: '6px' }}
               >
@@ -1273,7 +1332,7 @@ export const Profile: React.FC = () => {
                   <div className="dc-rec-details">
                     <h4 className="dc-rec-name">{member.name}</h4>
                     <p className="dc-rec-headline">{member.headline}</p>
-                    <Button 
+                    <Button
                       variant={member.status === 'Connected' ? 'secondary' : member.status === 'Pending...' ? 'secondary' : 'primary'}
                       className="dc-rec-connect-btn"
                       onClick={() => handleConnectClick(member.id)}
@@ -1293,11 +1352,11 @@ export const Profile: React.FC = () => {
 
       {/* Create Post Modal Overlay */}
       {isPostModalOpen && (
-        <div className="dc-post-modal-overlay" style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justify: 'center', background: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(8px)' }}>
+        <div className="dc-post-modal-overlay" style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(8px)' }}>
           <div className="dc-post-modal glass-panel" style={{ width: '90%', maxWidth: '520px', borderRadius: '12px', border: '1px solid hsl(var(--border))', background: 'hsl(var(--bg-card))', boxShadow: 'var(--shadow-lg)', overflow: 'hidden', position: 'relative' }}>
-            
+
             {/* Modal Header */}
-            <div style={{ display: 'flex', alignItems: 'center', justify: 'space-between', padding: '16px 20px', borderBottom: '1px solid hsl(var(--border))' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid hsl(var(--border))' }}>
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: 'hsl(var(--text-primary))' }}>Create a Post</h3>
               <button onClick={() => { setIsPostModalOpen(false); setSelectedFiles([]); setPostCaption(''); }} style={{ background: 'transparent', border: 'none', color: 'hsl(var(--text-secondary))', cursor: 'pointer', padding: 4 }}>
                 <X size={20} />
@@ -1347,9 +1406,9 @@ export const Profile: React.FC = () => {
                       ) : (
                         <img src={fileObj.previewUrl} alt={`Preview ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       )}
-                      
+
                       {/* Delete button overlay */}
-                      <button type="button" className="dc-slide-delete" onClick={() => handleRemoveSelectedFile(i)} style={{ position: 'absolute', top: '10px', right: '10px', background: 'rgba(239, 68, 68, 0.85)', color: '#fff', border: 'none', borderRadius: '50%', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justify: 'center', cursor: 'pointer', zIndex: 20 }}>
+                      <button type="button" className="dc-slide-delete" onClick={() => handleRemoveSelectedFile(i)} style={{ position: 'absolute', top: '10px', right: '10px', background: 'rgba(239, 68, 68, 0.85)', color: '#fff', border: 'none', borderRadius: '50%', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 20 }}>
                         <Trash2 size={14} />
                       </button>
                     </div>
@@ -1358,13 +1417,13 @@ export const Profile: React.FC = () => {
                   {/* Navigation Arrows for Preview */}
                   {selectedFiles.length > 1 && (
                     <>
-                      <button type="button" onClick={handlePrevPreview} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', background: 'rgba(15, 23, 42, 0.7)', border: 'none', color: '#fff', borderRadius: '50%', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justify: 'center', cursor: 'pointer', zIndex: 10 }}>
+                      <button type="button" onClick={handlePrevPreview} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', background: 'rgba(15, 23, 42, 0.7)', border: 'none', color: '#fff', borderRadius: '50%', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 10 }}>
                         <ChevronLeft size={16} />
                       </button>
-                      <button type="button" onClick={handleNextPreview} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'rgba(15, 23, 42, 0.7)', border: 'none', color: '#fff', borderRadius: '50%', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justify: 'center', cursor: 'pointer', zIndex: 10 }}>
+                      <button type="button" onClick={handleNextPreview} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'rgba(15, 23, 42, 0.7)', border: 'none', color: '#fff', borderRadius: '50%', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 10 }}>
                         <ChevronRight size={16} />
                       </button>
-                      
+
                       {/* Index bubble */}
                       <div style={{ position: 'absolute', bottom: '10px', right: '10px', background: 'rgba(15, 23, 42, 0.7)', color: '#fff', fontSize: '11px', padding: '2px 8px', borderRadius: '10px', zIndex: 10 }}>
                         {previewIndex + 1} / {selectedFiles.length}
