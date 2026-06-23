@@ -21,3 +21,32 @@ export const uploadProfilePhoto = async (profilePhotoFile: File): Promise<string
 
   return response.data.secure_url;
 };
+
+export interface UploadedMedia {
+  url: string;
+  type: "image" | "video";
+}
+
+// Function to upload generic media (image or video) to Cloudinary
+export const uploadMediaFile = async (file: File): Promise<UploadedMedia> => {
+  if (!file) throw new Error("No file provided");
+  if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
+    throw new Error("Cloudinary credentials are not configured in VITE environment variables.");
+  }
+
+  const isVideo = file.type.startsWith("video/");
+  const resourceType = isVideo ? "video" : "image";
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+
+  const response = await axios.post(
+    `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`,
+    formData
+  );
+
+  return {
+    url: response.data.secure_url,
+    type: resourceType
+  };
+};

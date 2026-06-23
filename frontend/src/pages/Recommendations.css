@@ -88,7 +88,59 @@
 }
 
 .net-card-stats {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
+}
+
+.net-card-mutual {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.net-mutual-avatars {
+  display: flex;
+  align-items: center;
+}
+
+.net-mutual-avatar-mini {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid var(--surface-light);
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  margin-right: -6px;
+  z-index: 2;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease, z-index 0s;
+}
+
+.net-mutual-avatar-mini:hover {
+  transform: scale(1.2);
+  z-index: 10;
+}
+
+.net-mutual-avatar-mini:last-child {
+  margin-right: 0;
+  z-index: 1;
+}
+
+.net-mutual-text {
+  font-size: 12px;
+  color: hsl(var(--text-secondary));
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.net-mutual-text:hover {
+  color: hsl(var(--primary));
+  text-decoration: underline;
 }
 
 .net-match-badge {

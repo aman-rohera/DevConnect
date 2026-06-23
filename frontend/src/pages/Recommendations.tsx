@@ -376,6 +376,49 @@ export const Recommendations: React.FC = () => {
                       </span>
                     </div>
 
+                    {/* Mutual Connections (Dummy UI for now) */}
+                    {(() => {
+                      const mutuals = [
+                        [
+                          { name: 'Linus Torvalds', avatar: '💻' },
+                          { name: 'Aisha Vance', avatar: '⚡' }
+                        ],
+                        [
+                          { name: 'Sarah Drasner', avatar: '🎨' },
+                          { name: 'Linus Torvalds', avatar: '💻' }
+                        ],
+                        [
+                          { name: 'Aisha Vance', avatar: '⚡' }
+                        ],
+                        [
+                          { name: 'Sarah Drasner', avatar: '🎨' },
+                          { name: 'Aisha Vance', avatar: '⚡' }
+                        ]
+                      ][idx % 4];
+
+                      const totalCount = [5, 3, 1, 8][idx % 4];
+                      const primaryName = mutuals[0]?.name || 'Developer';
+
+                      return (
+                        <div className="net-card-mutual">
+                          <div className="net-mutual-avatars">
+                            {mutuals.map((m, i) => (
+                              <span key={i} className="net-mutual-avatar-mini" title={m.name}>
+                                {m.avatar}
+                              </span>
+                            ))}
+                          </div>
+                          <span className="net-mutual-text">
+                            {totalCount === 1 ? (
+                              `${primaryName} is a mutual connection`
+                            ) : (
+                              `${primaryName} and ${totalCount - 1} other${totalCount - 1 > 1 ? 's' : ''} are mutual connections`
+                            )}
+                          </span>
+                        </div>
+                      );
+                    })()}
+
                     <div className="net-card-skills-wrapper">
                       <div className="net-card-skills">
                         {rec.sharedSkills.slice(0, 3).map(skill => (
