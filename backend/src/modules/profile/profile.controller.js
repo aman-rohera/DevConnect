@@ -1,6 +1,6 @@
 import * as profileService from './profile.service.js';
 
-export const getOwnProfile = async (req, res) => {
+const getOwnProfile = async (req, res) => {
   try {
     const profile = await profileService.getUserProfile(req.user.id);
     if (!profile) {
@@ -22,7 +22,7 @@ export const getOwnProfile = async (req, res) => {
   }
 };
 
-export const getProfileById = async (req, res) => {
+const getProfileById = async (req, res) => {
   const { id } = req.params;
 
   try {
@@ -46,7 +46,7 @@ export const getProfileById = async (req, res) => {
   }
 };
 
-export const updateOwnProfile = async (req, res) => {
+const updateOwnProfile = async (req, res) => {
   const { headline, bio, avatarUrl, skills, projects, education, experience, certificates } = req.body;
 
   try {
@@ -60,7 +60,7 @@ export const updateOwnProfile = async (req, res) => {
       experience,
       certificates
     });
-    
+
     return res.status(200).json({
       success: true,
       message: 'Profile updated successfully.',
@@ -74,3 +74,5 @@ export const updateOwnProfile = async (req, res) => {
     });
   }
 };
+
+export { getOwnProfile, getProfileById, updateOwnProfile };

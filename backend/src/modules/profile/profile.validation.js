@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const updateProfileSchema = z.object({
+const updateProfileSchema = z.object({
   body: z.object({
     headline: z.string().max(255, 'Headline cannot exceed 255 characters').optional(),
     bio: z.string().optional(),
@@ -43,8 +43,10 @@ export const updateProfileSchema = z.object({
   })
 });
 
-export const getProfileByIdSchema = z.object({
+const getProfileByIdSchema = z.object({
   params: z.object({
     id: z.string().uuid('Invalid user ID format')
   })
 });
+
+export { updateProfileSchema, getProfileByIdSchema };

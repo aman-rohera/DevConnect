@@ -5,7 +5,7 @@ import prisma from '../../config/db.js';
  * Syncs a user and their skills from PostgreSQL to Neo4j
  * This should be called whenever a user updates their profile.
  */
-export const syncUserToNeo4j = async (userId) => {
+const syncUserToNeo4j = async (userId) => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     include: {
@@ -54,7 +54,7 @@ export const syncUserToNeo4j = async (userId) => {
         { userId: user.id, skillName: skillName.trim() }
       );
     }
-    
+
     // 4. Upsert Education/Schools
     // Remove old education relationships
     await session.run(
@@ -64,7 +64,7 @@ export const syncUserToNeo4j = async (userId) => {
       `,
       { id: user.id }
     );
-    
+
     if (Array.isArray(user.education)) {
       for (const edu of user.education) {
         if (edu && edu.school) {
@@ -80,7 +80,7 @@ export const syncUserToNeo4j = async (userId) => {
         }
       }
     }
-    
+
     return true;
   } catch (error) {
     console.error('Error syncing user to Neo4j:', error);
@@ -93,7 +93,7 @@ export const syncUserToNeo4j = async (userId) => {
 /**
  * Recommends users based on shared skills.
  */
-export const getRecommendations = async (userId) => {
+const getRecommendations = async (userId) => {
   // First, get all existing connection targets to exclude them from recommendations
   const existingConnections = await prisma.connection.findMany({
     where: {
@@ -103,8 +103,8 @@ export const getRecommendations = async (userId) => {
       ]
     }
   });
-  
-  const excludedIds = existingConnections.map(c => 
+
+  const excludedIds = existingConnections.map(c =>
     c.senderId === userId ? c.receiverId : c.senderId
   );
 
@@ -156,3 +156,5 @@ export const getRecommendations = async (userId) => {
     await session.close();
   }
 };
+
+export { syncUserToNeo4j, getRecommendations };

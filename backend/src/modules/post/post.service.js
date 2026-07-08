@@ -1,6 +1,6 @@
 import prisma from '../../config/db.js';
 
-export const createPost = async (userId, content, imageUrl) => {
+const createPost = async (userId, content, imageUrl) => {
   return prisma.post.create({
     data: {
       userId,
@@ -20,7 +20,7 @@ export const createPost = async (userId, content, imageUrl) => {
   });
 };
 
-export const getFeedPosts = async () => {
+const getFeedPosts = async () => {
   // Simple feed: fetch the latest 50 posts
   return prisma.post.findMany({
     orderBy: {
@@ -39,3 +39,5 @@ export const getFeedPosts = async () => {
     }
   });
 };
+
+export { createPost, getFeedPosts };

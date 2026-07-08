@@ -1,6 +1,6 @@
 import * as connectionService from './connection.service.js';
 
-export const sendRequest = async (req, res) => {
+const sendRequest = async (req, res) => {
   try {
     const { receiverId } = req.body;
     const connection = await connectionService.sendConnectionRequest(req.user.id, receiverId);
@@ -10,7 +10,7 @@ export const sendRequest = async (req, res) => {
   }
 };
 
-export const getPending = async (req, res) => {
+const getPending = async (req, res) => {
   try {
     const requests = await connectionService.getPendingRequests(req.user.id);
     res.json({ success: true, requests });
@@ -19,7 +19,7 @@ export const getPending = async (req, res) => {
   }
 };
 
-export const respond = async (req, res) => {
+const respond = async (req, res) => {
   try {
     const { connectionId } = req.params;
     const { action } = req.body; // 'ACCEPT' or 'REJECT'
@@ -30,7 +30,7 @@ export const respond = async (req, res) => {
   }
 };
 
-export const getMyConnections = async (req, res) => {
+const getMyConnections = async (req, res) => {
   try {
     const connections = await connectionService.getConnections(req.user.id);
     res.json({ success: true, connections });
@@ -38,3 +38,5 @@ export const getMyConnections = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+export { sendRequest, getPending, respond, getMyConnections };

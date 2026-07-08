@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const registerSchema = z.object({
+const registerSchema = z.object({
   body: z.object({
     email: z
       .string({ required_error: 'Email is required' })
@@ -16,7 +16,7 @@ export const registerSchema = z.object({
   })
 });
 
-export const loginSchema = z.object({
+const loginSchema = z.object({
   body: z.object({
     email: z
       .string({ required_error: 'Email is required' })
@@ -25,3 +25,5 @@ export const loginSchema = z.object({
       .string({ required_error: 'Password is required' })
   })
 });
+
+export { registerSchema, loginSchema };

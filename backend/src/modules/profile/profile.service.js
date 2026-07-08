@@ -1,7 +1,7 @@
 import prisma from '../../config/db.js';
 import { syncUserToNeo4j } from '../recommendation/recommendation.service.js';
 
-export const getUserProfile = async (userId) => {
+const getUserProfile = async (userId) => {
   const profile = await prisma.user.findUnique({
     where: { id: userId },
     select: {
@@ -35,7 +35,7 @@ export const getUserProfile = async (userId) => {
   return { ...profile, skills: formattedSkills };
 };
 
-export const updateUserProfile = async (userId, data) => {
+const updateUserProfile = async (userId, data) => {
   const { headline, bio, avatarUrl, skills, projects, education, experience, certificates } = data;
 
   // 1. Update basic profile info & JSON fields
@@ -110,3 +110,5 @@ export const updateUserProfile = async (userId, data) => {
   const finalProfile = await getUserProfile(userId);
   return finalProfile;
 };
+
+export { getUserProfile, updateUserProfile };

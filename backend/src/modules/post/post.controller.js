@@ -1,9 +1,9 @@
 import * as postService from './post.service.js';
 
-export const create = async (req, res) => {
+const create = async (req, res) => {
   try {
     const { content, imageUrl } = req.body;
-    
+
     if (!content && !imageUrl) {
       return res.status(400).json({ success: false, message: 'Content or image is required' });
     }
@@ -16,7 +16,7 @@ export const create = async (req, res) => {
   }
 };
 
-export const getFeed = async (req, res) => {
+const getFeed = async (req, res) => {
   try {
     const posts = await postService.getFeedPosts();
     res.json({ success: true, posts });
@@ -25,3 +25,5 @@ export const getFeed = async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to fetch feed' });
   }
 };
+
+export { create, getFeed };

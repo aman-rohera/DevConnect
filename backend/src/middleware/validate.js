@@ -1,4 +1,4 @@
-export const validate = (schema) => (req, res, next) => {
+const validate = (schema) => (req, res, next) => {
   try {
     // Parse and validate the request components: body, query, and params
     schema.parse({
@@ -19,3 +19,5 @@ export const validate = (schema) => (req, res, next) => {
     });
   }
 };
+
+export { validate };

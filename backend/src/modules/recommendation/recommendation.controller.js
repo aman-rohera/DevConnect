@@ -1,6 +1,6 @@
 import * as recommendationService from './recommendation.service.js';
 
-export const getRecommendations = async (req, res) => {
+const getRecommendations = async (req, res) => {
   try {
     const userId = req.user.id; // Assumes auth middleware sets req.user
     const recommendations = await recommendationService.getRecommendations(userId);
@@ -10,7 +10,7 @@ export const getRecommendations = async (req, res) => {
   }
 };
 
-export const syncProfileToNeo4j = async (req, res) => {
+const syncProfileToNeo4j = async (req, res) => {
   try {
     const userId = req.user.id;
     await recommendationService.syncUserToNeo4j(userId);
@@ -19,3 +19,5 @@ export const syncProfileToNeo4j = async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to sync profile', error: error.message });
   }
 };
+
+export { getRecommendations, syncProfileToNeo4j };

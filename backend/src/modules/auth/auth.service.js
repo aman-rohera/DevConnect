@@ -5,7 +5,7 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-export const formatUserResponse = (user) => {
+const formatUserResponse = (user) => {
   if (!user) return null;
   return {
     id: user.id,
@@ -26,7 +26,7 @@ export const formatUserResponse = (user) => {
   };
 };
 
-export const getUserById = async (userId) => {
+const getUserById = async (userId) => {
   return await prisma.user.findUnique({
     where: { id: userId },
     include: {
@@ -39,7 +39,7 @@ export const getUserById = async (userId) => {
   });
 };
 
-export const registerUser = async (email, password, fullName, headline = '', skillsString = '') => {
+const registerUser = async (email, password, fullName, headline = '', skillsString = '') => {
   // Check if user already exists
   const existingUser = await prisma.user.findUnique({
     where: { email },
@@ -103,7 +103,7 @@ export const registerUser = async (email, password, fullName, headline = '', ski
   });
 };
 
-export const loginUser = async (email, password) => {
+const loginUser = async (email, password) => {
   // Find user by email
   const user = await prisma.user.findUnique({
     where: { email },
@@ -142,3 +142,5 @@ export const loginUser = async (email, password) => {
     user,
   };
 };
+
+export { formatUserResponse, getUserById, registerUser, loginUser };

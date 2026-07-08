@@ -1,7 +1,7 @@
 import prisma from '../../config/db.js';
 import { getNeo4jSession } from '../../config/neo4j.js';
 
-export const sendConnectionRequest = async (senderId, receiverId) => {
+const sendConnectionRequest = async (senderId, receiverId) => {
   // Check if request already exists
   const existing = await prisma.connection.findFirst({
     where: {
@@ -25,7 +25,7 @@ export const sendConnectionRequest = async (senderId, receiverId) => {
   });
 };
 
-export const getPendingRequests = async (userId) => {
+const getPendingRequests = async (userId) => {
   return prisma.connection.findMany({
     where: {
       receiverId: userId,
@@ -44,7 +44,7 @@ export const getPendingRequests = async (userId) => {
   });
 };
 
-export const respondToRequest = async (connectionId, receiverId, action) => {
+const respondToRequest = async (connectionId, receiverId, action) => {
   const connection = await prisma.connection.findUnique({
     where: { id: connectionId }
   });
@@ -78,7 +78,7 @@ export const respondToRequest = async (connectionId, receiverId, action) => {
   return updated;
 };
 
-export const getConnections = async (userId) => {
+const getConnections = async (userId) => {
   return prisma.connection.findMany({
     where: {
       OR: [
@@ -88,3 +88,5 @@ export const getConnections = async (userId) => {
     }
   });
 };
+
+export { sendConnectionRequest, getPendingRequests, respondToRequest, getConnections };

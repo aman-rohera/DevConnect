@@ -15,12 +15,14 @@ console.log('------------------------------');
 
 const driver = neo4j.driver(uri, neo4j.auth.basic(user, password));
 
-export const getNeo4jSession = () => {
+const getNeo4jSession = () => {
   return driver.session();
 };
 
-export const closeNeo4jDriver = async () => {
+const closeNeo4jDriver = async () => {
   await driver.close();
 };
 
 export default driver;
+
+export { getNeo4jSession, closeNeo4jDriver };
