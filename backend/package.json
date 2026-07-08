@@ -8,7 +8,20 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "postinstall": "prisma generate",
-    "build": "prisma generate && prisma db push"
+    "build": "prisma generate && prisma db push",
+    "pretest": "node tests/helpers/migrate-test-db.js",
+    "test": "cross-env NODE_ENV=test vitest run --config tests/vitest.config.js",
+    "test:watch": "cross-env NODE_ENV=test vitest --config tests/vitest.config.js",
+    "test:coverage": "cross-env NODE_ENV=test vitest run --coverage --config tests/vitest.config.js",
+    "test:api": "cross-env NODE_ENV=test vitest run tests/api --config tests/vitest.config.js",
+    "test:auth": "cross-env NODE_ENV=test vitest run tests/api/auth --config tests/vitest.config.js",
+    "test:profile": "cross-env NODE_ENV=test vitest run tests/api/profile --config tests/vitest.config.js",
+    "test:posts": "cross-env NODE_ENV=test vitest run tests/api/posts --config tests/vitest.config.js",
+    "test:users": "cross-env NODE_ENV=test vitest run tests/api/users --config tests/vitest.config.js",
+    "test:notifications": "cross-env NODE_ENV=test vitest run tests/api/notifications --config tests/vitest.config.js",
+    "test:seed": "cross-env NODE_ENV=test node tests/seed.js",
+    "test:clean": "cross-env NODE_ENV=test node tests/clean.js",
+    "test:debug": "cross-env NODE_ENV=test vitest --inspect-brk --no-file-parallelism --config tests/vitest.config.js"
   },
   "dependencies": {
     "@prisma/client": "^5.14.0",
@@ -23,7 +36,12 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@faker-js/faker": "^8.4.1",
+    "@vitest/coverage-v8": "^1.6.0",
+    "cross-env": "^7.0.3",
     "nodemon": "^3.1.0",
-    "prisma": "^5.14.0"
+    "prisma": "^5.14.0",
+    "supertest": "^6.3.4",
+    "vitest": "^1.6.0"
   }
 }

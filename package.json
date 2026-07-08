@@ -1,0 +1,19 @@
+{
+  "name": "devconnect-project",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "npm run test --prefix backend",
+    "test:watch": "npm run test:watch --prefix backend",
+    "test:coverage": "npm run test:coverage --prefix backend",
+    "test:api": "npm run test:api --prefix backend",
+    "test:auth": "npm run test:auth --prefix backend",
+    "test:profile": "npm run test:profile --prefix backend",
+    "test:posts": "npm run test:posts --prefix backend",
+    "test:users": "npm run test:users --prefix backend",
+    "test:notifications": "npm run test:notifications --prefix backend",
+    "test:seed": "npm run test:seed --prefix backend",
+    "test:clean": "npm run test:clean --prefix backend",
+    "test:debug": "npm run test:debug --prefix backend"
+  }
+}

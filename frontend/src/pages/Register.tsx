@@ -1,200 +1,128 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { Input } from '../components/common/Input';
-import { Button } from '../components/common/Button';
-import { Card } from '../components/common/Card';
-import { Mail, Lock, User, Briefcase, Cpu, ArrowRight, Terminal } from 'lucide-react';
-import './Register.css';
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Github, Loader2, Mail } from "lucide-react";
+import { toast } from "sonner";
+import { AuthLayout } from "@/components/layout/AuthLayout";
+
+function strength(p: string) {
+  let s = 0;
+  if (p.length >= 8) s++;
+  if (/[A-Z]/.test(p)) s++;
+  if (/[0-9]/.test(p)) s++;
+  if (/[^A-Za-z0-9]/.test(p)) s++;
+  return s; // 0-4
+}
 
 export const Register: React.FC = () => {
-  const { register, error, clearError } = useAuth();
+  const { register } = useAuth();
   const navigate = useNavigate();
 
-  // Form inputs state
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [headline, setHeadline] = useState('');
-  const [skills, setSkills] = useState('');
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const s = strength(password);
+  const labels = ["Too weak", "Weak", "Okay", "Strong", "Excellent"];
+  const colors = ["bg-destructive", "bg-destructive", "bg-warning", "bg-primary", "bg-success"];
 
-  const validate = () => {
-    const errors: Record<string, string> = {};
-    if (!fullName.trim()) {
-      errors.fullName = 'Full Name is required';
-    }
-    if (!email) {
-      errors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
-      errors.email = 'Email address is invalid';
-    }
-    if (!password) {
-      errors.password = 'Password is required';
-    } else if (password.length < 6) {
-      errors.password = 'Password must be at least 6 characters';
-    }
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    clearError();
-    if (!validate()) return;
+    setLoading(true);
+    setError("");
 
-    setIsSubmitting(true);
     try {
-      await register(email, password, fullName, headline, skills);
-      navigate('/');
-    } catch (err) {
-      console.error('Registration submit error:', err);
+      await register(email, password, fullName);
+      toast.success("Account created successfully!");
+      navigate("/");
+    } catch (err: any) {
+      console.error("Registration failed", err);
+      setError(err.message || "Registration failed. Please try again.");
+      toast.error(err.message || "Registration failed. Please try again.");
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   };
 
   return (
-    <div className="dc-register-container">
-      {/* Background patterns */}
-      <div className="dc-register-grid" />
-      <div className="dc-accent-light dc-accent-light--purple" />
-      <div className="dc-accent-light dc-accent-light--teal" />
+    <AuthLayout>
+      <h1 className="text-2xl font-semibold tracking-tight text-gradient">Create your account</h1>
+      <p className="mt-1 text-sm text-muted-foreground">Join thousands of developers building in public.</p>
 
-      <div className="dc-register-content">
-        {/* Left Side: Brand Promo (Compact for signup) */}
-        <div className="dc-register-brand">
-          <div className="dc-brand-logo glow-hover">
-            <Terminal className="dc-brand-logo-icon" />
-            <span className="dc-brand-logo-text text-gradient">DevConnect</span>
-          </div>
-          <h1 className="dc-register-promo-title">
-            Build Your <span className="text-gradient">Developer ID</span> Today.
-          </h1>
-          <p className="dc-register-promo-subtitle">
-            Join the developer ecosystem. Create a premium profile, import your GitHub commits, discuss design patterns, and find open source contributors or tech jobs.
-          </p>
-
-          <div className="dc-quick-stats">
-            <div className="dc-stat-box">
-              <span className="dc-stat-num">50k+</span>
-              <span className="dc-stat-label">Active Engineers</span>
-            </div>
-            <div className="dc-stat-box">
-              <span className="dc-stat-num">4.8★</span>
-              <span className="dc-stat-label">Recruiter Rating</span>
-            </div>
-          </div>
+      {error && (
+        <div className="mt-4 p-3 rounded-lg border border-destructive/20 bg-destructive/10 text-xs text-destructive">
+          {error}
         </div>
+      )}
 
-        {/* Right Side: Signup Form */}
-        <div className="dc-register-form-wrapper">
-          <Card glow className="dc-register-card">
-            <div className="dc-register-header">
-              <h2>Initialize Profile</h2>
-              <p>Setup your credentials to compile your network profile.</p>
-            </div>
-
-            {error && (
-              <div className={`dc-alert ${error.toLowerCase().includes('successful') ? 'dc-alert--success' : 'dc-alert--danger'}`} role="alert">
-                <span className="dc-alert-message">{error}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="dc-register-form-fields" noValidate>
-              <div className="dc-form-row">
-                <Input
-                  label="Full Name"
-                  placeholder="Linus Torvalds"
-                  type="text"
-                  value={fullName}
-                  onChange={(e) => {
-                    setFullName(e.target.value);
-                    if (formErrors.fullName) {
-                      setFormErrors((prev) => ({ ...prev, fullName: '' }));
-                    }
-                  }}
-                  error={formErrors.fullName}
-                  leftIcon={<User size={18} />}
-                  required
-                />
-
-                <Input
-                  label="Developer Email"
-                  placeholder="linus@git.org"
-                  type="email"
-                  value={email}
-                  onChange={(e) => {
-                    setEmail(e.target.value);
-                    if (formErrors.email) {
-                      setFormErrors((prev) => ({ ...prev, email: '' }));
-                    }
-                  }}
-                  error={formErrors.email}
-                  leftIcon={<Mail size={18} />}
-                  required
-                />
-              </div>
-
-              <div className="dc-form-row">
-                <Input
-                  label="Access Password"
-                  placeholder="Min 6 characters"
-                  type="password"
-                  value={password}
-                  onChange={(e) => {
-                    setPassword(e.target.value);
-                    if (formErrors.password) {
-                      setFormErrors((prev) => ({ ...prev, password: '' }));
-                    }
-                  }}
-                  error={formErrors.password}
-                  leftIcon={<Lock size={18} />}
-                  required
-                />
-
-                <Input
-                  label="Professional Headline"
-                  placeholder="e.g. Creator of Git & Linux"
-                  type="text"
-                  value={headline}
-                  onChange={(e) => setHeadline(e.target.value)}
-                  leftIcon={<Briefcase size={18} />}
-                />
-              </div>
-
-              <Input
-                label="Core Stack Skills (Comma-separated)"
-                placeholder="e.g. C, Git, Bash, Linux Kernel, Rust"
-                type="text"
-                value={skills}
-                onChange={(e) => setSkills(e.target.value)}
-                leftIcon={<Cpu size={18} />}
-              />
-
-              <Button
-                type="submit"
-                variant="secondary"
-                fullWidth
-                isLoading={isSubmitting}
-                rightIcon={<ArrowRight size={16} />}
-                className="mt-4"
-              >
-                Compile & Register profile
-              </Button>
-            </form>
-
-            <div className="dc-login-prompt">
-              Already have a developer ID?{' '}
-              <Link to="/login" className="dc-text-link-primary">
-                Authenticate Instead
-              </Link>
-            </div>
-          </Card>
-        </div>
+      <div className="mt-6 grid grid-cols-2 gap-2">
+        <Button variant="outline"><Github className="mr-2 h-4 w-4" /> GitHub</Button>
+        <Button variant="outline"><Mail className="mr-2 h-4 w-4" /> Google</Button>
       </div>
-    </div>
+
+      <div className="my-6 flex items-center gap-3 text-xs text-muted-foreground">
+        <div className="h-px flex-1 bg-border" /> OR <div className="h-px flex-1 bg-border" />
+      </div>
+
+      <form onSubmit={submit} className="space-y-3">
+        <div className="space-y-1.5">
+          <Label htmlFor="name">Name</Label>
+          <Input 
+            id="name" 
+            required 
+            placeholder="Alex Rivera"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="email">Email</Label>
+          <Input 
+            id="email" 
+            type="email" 
+            required 
+            autoComplete="email" 
+            placeholder="you@developer.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="password">Password</Label>
+          <Input 
+            id="password" 
+            type="password" 
+            required 
+            autoComplete="new-password" 
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          {password.length > 0 && (
+            <div className="mt-1.5 space-y-1.5">
+              <div className="flex gap-1">
+                {[0, 1, 2, 3].map((i) => (
+                  <div key={i} className={`h-1 flex-1 rounded ${i < s ? colors[s] : "bg-border"}`} />
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">{labels[s]}</p>
+            </div>
+          )}
+        </div>
+        <Button type="submit" className="w-full" disabled={loading}>
+          {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating</> : "Create account"}
+        </Button>
+      </form>
+
+      <p className="mt-6 text-center text-sm text-muted-foreground">
+        Already have an account? <Link to="/login" className="font-medium text-foreground hover:underline">Sign in</Link>
+      </p>
+    </AuthLayout>
   );
 };
+
+export default Register;
