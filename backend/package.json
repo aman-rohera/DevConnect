@@ -24,7 +24,7 @@
     "test:debug": "cross-env NODE_ENV=test vitest --inspect-brk --no-file-parallelism --config tests/vitest.config.js"
   },
   "dependencies": {
-    "@prisma/client": "^5.14.0",
+    "@prisma/client": "^6.16.2",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
@@ -32,6 +32,7 @@
     "jsonwebtoken": "^9.0.2",
     "neo4j-driver": "^6.1.0",
     "pg": "^8.11.5",
+    "prisma": "^6.16.2",
     "socket.io": "^4.7.5",
     "zod": "^3.23.8"
   },
@@ -40,7 +41,6 @@
     "@vitest/coverage-v8": "^1.6.0",
     "cross-env": "^7.0.3",
     "nodemon": "^3.1.0",
-    "prisma": "^5.14.0",
     "supertest": "^6.3.4",
     "vitest": "^1.6.0"
   }

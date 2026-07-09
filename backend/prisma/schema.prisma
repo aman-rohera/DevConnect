@@ -13,16 +13,22 @@ generator client {
 // ==========================================
 
 enum UserRole {
-  ADMIN
   USER
-  RECRUITER
+  ADMIN
   MODERATOR
+}
+
+enum Visibility {
+  PUBLIC
+  CONNECTIONS
+  PRIVATE
 }
 
 enum CompanyRole {
   OWNER
   ADMIN
-  MEMBER
+  RECRUITER
+  EMPLOYEE
 }
 
 enum JobType {
@@ -40,11 +46,11 @@ enum EmploymentType {
 }
 
 enum ApplicationStatus {
-  SUBMITTED
+  PENDING
   REVIEWING
   INTERVIEWING
   OFFERED
-  ACCEPTED
+  HIRED
   REJECTED
   WITHDRAWN
 }
@@ -52,7 +58,6 @@ enum ApplicationStatus {
 enum ConnectionStatus {
   PENDING
   ACCEPTED
-  REJECTED
 }
 
 enum NotificationType {
@@ -65,398 +70,251 @@ enum NotificationType {
   MENTION
 }
 
-enum MessageType {
-  TEXT
-  IMAGE
-  FILE
-  AUDIO
-  VIDEO
-}
-
-enum InterviewStatus {
-  SCHEDULED
-  COMPLETED
-  CANCELLED
-  NO_SHOW
-}
-
-enum OfferStatus {
-  PENDING
-  ACCEPTED
-  DECLINED
-  EXPIRED
-}
-
 enum ReportStatus {
   PENDING
   RESOLVED
   DISMISSED
 }
 
-enum Visibility {
-  PUBLIC
-  CONNECTIONS_ONLY
-  PRIVATE
+enum MediaType {
+  IMAGE
+  VIDEO
+  DOCUMENT
+}
+
+enum InterviewMode {
+  ONLINE
+  OFFLINE
+  PHONE
+}
+
+enum InterviewStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  RESCHEDULED
+}
+
+enum ReportTargetType {
+  USER
+  POST
+  COMMENT
+  JOB
+  COMPANY
+}
+
+enum RecommendationAction {
+  CLICKED
+  DISMISSED
+  APPLIED
+  SAVED
+  CONNECTED
+}
+
+enum NotificationEntityType {
+  USER
+  POST
+  COMMENT
+  JOB
+  COMPANY
+  MESSAGE
+  CONNECTION
 }
 
 // ==========================================
-// IDENTITY MODELS
+// IDENTITY & PROFILE
 // ==========================================
 
 model User {
-  id                  String               @id @default(uuid()) @db.Uuid
-  email               String               @unique
-  passwordHash        String               @map("password_hash")
-  fullName            String               @map("full_name")
-  headline            String?              @default("")
-  bio                 String?              @default("")
-  avatarUrl           String?              @default("") @map("avatar_url")
-  education           Json?                @default("[]")
-  experience          Json?                @default("[]")
-  certificates        Json?                @default("[]")
-  createdAt           DateTime             @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt           DateTime             @updatedAt @map("updated_at") @db.Timestamptz
-  role                UserRole             @default(USER)
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  fullName     String   @map("full_name")
+  role         UserRole @default(USER)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
-  skills              UserSkill[]
-  projects            Project[]
-  posts               Post[]
-  sentConnections     Connection[]         @relation("SentConnections")
-  receivedConnections Connection[]         @relation("ReceivedConnections")
+  // Auth
+  sessions UserSession[]
 
-  // Identity / Auth Relations
-  sessions            UserSession[]
-  refreshTokens       RefreshToken[]
-  verificationTokens  VerificationToken[]
-  oauthAccounts       OAuthAccount[]
-  profile             Profile?
-  permissions         UserPermission[]
+  // Profile relations
+  profile     Profile?
+  experiences Experience[]
+  education   Education[]
+  skills      UserSkill[]
+  projects    Project[]
 
-  // Company / Recruiter Relations
-  companyMembers      CompanyMember[]
-  recruiterProfile    Recruiter?
-  followedCompanies   CompanyFollower[]
+  // Social
+  posts     Post[]
+  comments  Comment[]
+  likes     Like[]
+  follows   Follow[]  @relation("Follower")
+  followers Follow[]  @relation("Following")
 
-  // Job Relations
-  savedJobs           SavedJob[]
-  applications        Application[]
-  interviews          Interview[]          @relation("Interviewer")
+  // Connections
+  sentConnections     Connection[] @relation("SentConnections")
+  receivedConnections Connection[] @relation("ReceivedConnections")
 
-  // Social Relations
-  comments            Comment[]
-  likes               Like[]
-  bookmarks           Bookmark[]
-  shares              Share[]
-  follows             Follow[]             @relation("Follower")
-  followers           Follow[]             @relation("Following")
+  // Company
+  companyMembers CompanyMember[]
 
-  // Messaging Relations
-  conversations       ConversationMember[]
-  messages            Message[]
-  readReceipts        ReadReceipt[]
+  // Jobs
+  applications Application[]
+  savedJobs    SavedJob[]
+  jobsCreated  Job[]         @relation("RecruiterJobs")
 
-  // Notification Relations
-  notifications       Notification[]
-  notificationPrefs   NotificationPreference[]
+  // Messaging
+  conversations ConversationMember[]
+  messages      Message[]
 
-  // Search Relations
-  searchHistories     SearchHistory[]
+  // Notifications
+  notifications Notification[]
 
-  // Recommendation Relations
+  // Recommendations
   recommendationFeedbacks RecommendationFeedback[]
 
-  // Admin Relations
-  auditLogs           AuditLog[]
-  reportsCreated      Report[]             @relation("Reporter")
-  moderationActions   ModerationAction[]   @relation("Moderator")
-  moderatedActions    ModerationAction[]   @relation("TargetUser")
+  // Search
+  searchHistories SearchHistory[]
+
+  // Admin
+  auditLogs      AuditLog[]
+  reportsCreated Report[]   @relation("Reporter")
 
   @@map("users")
 }
 
-model Role {
-  id          String           @id @default(uuid()) @db.Uuid
-  name        String           @unique
-  description String?
-  permissions RolePermission[]
+model Profile {
+  id        String  @id @default(uuid()) @db.Uuid
+  userId    String  @unique @db.Uuid
+  headline  String?
+  bio       String?
+  location  String?
+  resumeUrl String?
+  website   String?
+  avatarUrl String? @map("avatar_url")
+  coverUrl  String? @map("cover_url")
 
-  createdAt   DateTime         @default(now()) @db.Timestamptz
-  updatedAt   DateTime         @updatedAt @db.Timestamptz
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@map("roles")
-}
-
-model Permission {
-  id          String           @id @default(uuid()) @db.Uuid
-  name        String           @unique
-  description String?
-  roles       RolePermission[]
-  users       UserPermission[]
-
-  createdAt   DateTime         @default(now()) @db.Timestamptz
-  updatedAt   DateTime         @updatedAt @db.Timestamptz
-
-  @@map("permissions")
-}
-
-model RolePermission {
-  roleId       String     @db.Uuid
-  permissionId String     @db.Uuid
-  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
-
-  @@id([roleId, permissionId])
-  @@map("role_permissions")
-}
-
-model UserPermission {
-  userId       String     @db.Uuid
-  permissionId String     @db.Uuid
-  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
-
-  @@id([userId, permissionId])
-  @@map("user_permissions")
+  @@map("profiles")
 }
 
 model UserSession {
   id        String   @id @default(uuid()) @db.Uuid
   userId    String   @db.Uuid
+  token     String   @unique
   device    String?
   ipAddress String?  @map("ip_address")
-  token     String   @unique
   expiresAt DateTime @map("expires_at") @db.Timestamptz
   createdAt DateTime @default(now()) @db.Timestamptz
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
+  @@index([token])
   @@map("user_sessions")
 }
 
-model RefreshToken {
-  id        String    @id @default(uuid()) @db.Uuid
-  userId    String    @db.Uuid
-  token     String    @unique
-  expiresAt DateTime  @map("expires_at") @db.Timestamptz
-  revokedAt DateTime? @map("revoked_at") @db.Timestamptz
-  createdAt DateTime  @default(now()) @db.Timestamptz
-
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("refresh_tokens")
-}
-
-model VerificationToken {
-  id        String   @id @default(uuid()) @db.Uuid
-  userId    String   @db.Uuid
-  token     String   @unique
-  expiresAt DateTime @map("expires_at") @db.Timestamptz
-  createdAt DateTime @default(now()) @db.Timestamptz
-
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("verification_tokens")
-}
-
-model OAuthAccount {
-  id             String   @id @default(uuid()) @db.Uuid
-  userId         String   @db.Uuid
-  provider       String
-  providerUserId String   @map("provider_user_id")
-  createdAt      DateTime @default(now()) @db.Timestamptz
-
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([provider, providerUserId])
-  @@map("oauth_accounts")
-}
-
 // ==========================================
-// PROFILE MODELS
+// PROFILE ENTITIES
 // ==========================================
 
-model Profile {
-  id           String        @id @default(uuid()) @db.Uuid
-  userId       String        @unique @db.Uuid
-  headline     String?       @default("")
-  bio          String?       @default("")
-  avatarUrl    String?       @default("") @map("avatar_url")
-  coverUrl     String?       @default("") @map("cover_url")
-  resumeUrl    String?       @default("") @map("resume_url")
-  createdAt    DateTime      @default(now()) @db.Timestamptz
-  updatedAt    DateTime      @updatedAt @db.Timestamptz
-  deletedAt    DateTime?     @db.Timestamptz
+model Experience {
+  id          String         @id @default(uuid()) @db.Uuid
+  userId      String         @db.Uuid
+  companyId   String?        @db.Uuid
+  companyName String         @map("company_name")
+  title       String
+  location    String?
+  type        EmploymentType @default(ON_SITE)
+  isCurrent   Boolean        @default(false) @map("is_current")
+  startDate   DateTime       @map("start_date") @db.Date
+  endDate     DateTime?      @map("end_date") @db.Date
+  description String?
 
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  educations   Education[]
-  experiences  Experience[]
-  certificates Certificate[]
-  resumes      Resume[]
-  socialLinks  SocialLink[]
-  languages    UserLanguage[]
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
 
-  @@map("profiles")
+  @@index([userId])
+  @@map("experiences")
 }
 
 model Education {
   id           String    @id @default(uuid()) @db.Uuid
-  profileId    String    @db.Uuid
+  userId       String    @db.Uuid
   school       String
   degree       String?
   fieldOfStudy String?   @map("field_of_study")
-  startDate    DateTime  @map("start_date") @db.Timestamptz
-  endDate      DateTime? @map("end_date") @db.Timestamptz
+  grade        String?
+  activities   String?
   description  String?
-  createdAt    DateTime  @default(now()) @db.Timestamptz
-  updatedAt    DateTime  @updatedAt @db.Timestamptz
+  startDate    DateTime  @map("start_date") @db.Date
+  endDate      DateTime? @map("end_date") @db.Date
 
-  profile      Profile   @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
   @@map("educations")
 }
 
-model Experience {
-  id          String         @id @default(uuid()) @db.Uuid
-  profileId   String         @db.Uuid
-  companyName String         @map("company_name")
-  role        String
-  location    String?
-  startDate   DateTime       @map("start_date") @db.Timestamptz
-  endDate     DateTime?      @map("end_date") @db.Timestamptz
-  type        EmploymentType @default(ON_SITE)
-  description String?
-  createdAt   DateTime       @default(now()) @db.Timestamptz
-  updatedAt   DateTime       @updatedAt @db.Timestamptz
-
-  profile     Profile        @relation(fields: [profileId], references: [id], onDelete: Cascade)
-
-  @@map("experiences")
-}
-
 model Skill {
-  id        Int         @id @default(autoincrement())
-  name      String      @unique
-  users     UserSkill[]
-  jobs      JobSkill[]
+  id    String      @id @default(uuid()) @db.Uuid
+  name  String      @unique
+  users UserSkill[]
+  jobs  JobSkill[]
 
   @@map("skills")
 }
 
 model UserSkill {
-  userId    String   @map("user_id") @db.Uuid
-  skillId   Int      @map("skill_id")
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  skill     Skill    @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  userId  String @db.Uuid
+  skillId String @db.Uuid
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skill Skill @relation(fields: [skillId], references: [id], onDelete: Cascade)
 
   @@id([userId, skillId])
   @@map("user_skills")
 }
 
 model Project {
-  id          String   @id @default(uuid()) @db.Uuid
-  userId      String   @map("user_id") @db.Uuid
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @db.Uuid
   title       String
-  description String
-  projectUrl  String?  @default("") @map("project_url")
-  repoUrl     String?  @default("") @map("repo_url")
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  description String?
+  url         String?
+  githubUrl   String?   @map("github_url")
+  liveUrl     String?   @map("live_url")
+  startDate   DateTime? @map("start_date") @db.Date
+  endDate     DateTime? @map("end_date") @db.Date
 
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
   @@map("projects")
 }
 
-model Certificate {
-  id           String    @id @default(uuid()) @db.Uuid
-  profileId    String    @db.Uuid
-  name         String
-  issuer       String
-  issueDate    DateTime? @map("issue_date") @db.Timestamptz
-  expiryDate   DateTime? @map("expiry_date") @db.Timestamptz
-  credentialId String?   @map("credential_id")
-  url          String?
-  createdAt    DateTime  @default(now()) @db.Timestamptz
-  updatedAt    DateTime  @updatedAt @db.Timestamptz
-
-  profile      Profile   @relation(fields: [profileId], references: [id], onDelete: Cascade)
-
-  @@map("certificates")
-}
-
-model Resume {
-  id        String    @id @default(uuid()) @db.Uuid
-  profileId String    @db.Uuid
-  title     String
-  fileUrl   String    @map("file_url")
-  isDefault Boolean   @default(false) @map("is_default")
-  createdAt DateTime  @default(now()) @db.Timestamptz
-  updatedAt DateTime  @updatedAt @db.Timestamptz
-
-  profile   Profile   @relation(fields: [profileId], references: [id], onDelete: Cascade)
-
-  @@map("resumes")
-}
-
-model SocialLink {
-  id        String   @id @default(uuid()) @db.Uuid
-  profileId String   @db.Uuid
-  platform  String
-  url       String
-  createdAt DateTime @default(now()) @db.Timestamptz
-  updatedAt DateTime @updatedAt @db.Timestamptz
-
-  profile   Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
-
-  @@map("social_links")
-}
-
-model Language {
-  id        String         @id @default(uuid()) @db.Uuid
-  code      String         @unique
-  name      String         @unique
-  users     UserLanguage[]
-
-  @@map("languages")
-}
-
-model UserLanguage {
-  profileId   String   @db.Uuid
-  languageId  String   @db.Uuid
-  proficiency String?
-  profile     Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  language    Language @relation(fields: [languageId], references: [id], onDelete: Cascade)
-
-  @@id([profileId, languageId])
-  @@map("user_languages")
-}
-
 // ==========================================
-// COMPANY MODELS
+// COMPANY
 // ==========================================
 
 model Company {
-  id            String                @id @default(uuid()) @db.Uuid
-  name          String                @unique
-  tagline       String?
-  description   String?
-  website       String?
-  logoUrl       String?               @map("logo_url")
-  industry      String?
-  employeeCount String?               @map("employee_count")
-  foundedYear   Int?                  @map("founded_year")
-  isVerified    Boolean               @default(false) @map("is_verified")
-  createdAt     DateTime              @default(now()) @db.Timestamptz
-  updatedAt     DateTime              @updatedAt @db.Timestamptz
-  deletedAt     DateTime?             @db.Timestamptz
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique
+  tagline     String?
+  description String?
+  slug        String   @unique
+  website     String?
+  logoUrl     String?  @map("logo_url")
+  industry    String?
+  isVerified  Boolean  @default(false) @map("is_verified")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
-  members       CompanyMember[]
-  departments   Department[]
-  followers     CompanyFollower[]
-  verifications CompanyVerification[]
-  analytics     CompanyAnalytics[]
-  jobs          Job[]
-  posts         Post[]                @relation("CompanyPosts")
-  recruiters    Recruiter[]
+  members     CompanyMember[]
+  jobs        Job[]
+  posts       Post[]
+  experiences Experience[]
 
   @@map("companies")
 }
@@ -464,115 +322,166 @@ model Company {
 model CompanyMember {
   companyId String      @db.Uuid
   userId    String      @db.Uuid
-  role      CompanyRole @default(MEMBER)
+  role      CompanyRole @default(EMPLOYEE)
   title     String?
-  createdAt DateTime    @default(now()) @db.Timestamptz
-  updatedAt DateTime    @updatedAt @db.Timestamptz
+  createdAt DateTime    @default(now()) @map("created_at") @db.Timestamptz
 
-  company   Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([companyId, userId])
+  @@index([userId])
   @@map("company_members")
 }
 
-model Department {
-  id        String   @id @default(uuid()) @db.Uuid
-  companyId String   @db.Uuid
-  name      String
-  createdAt DateTime @default(now()) @db.Timestamptz
-  updatedAt DateTime @updatedAt @db.Timestamptz
+// ==========================================
+// CONNECTIONS & SOCIAL
+// ==========================================
 
-  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+model Connection {
+  id         String           @id @default(uuid()) @db.Uuid
+  senderId   String           @map("sender_id") @db.Uuid
+  receiverId String           @map("receiver_id") @db.Uuid
+  status     ConnectionStatus @default(PENDING)
+  createdAt  DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime         @updatedAt @map("updated_at") @db.Timestamptz
 
-  @@map("departments")
+  sender   User @relation("SentConnections", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("ReceivedConnections", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@unique([senderId, receiverId])
+  @@index([receiverId, status])
+  @@map("connections")
 }
 
-model Recruiter {
-  id        String   @id @default(uuid()) @db.Uuid
-  userId    String   @unique @db.Uuid
-  companyId String   @db.Uuid
-  title     String?
-  createdAt DateTime @default(now()) @db.Timestamptz
-  updatedAt DateTime @updatedAt @db.Timestamptz
+model Follow {
+  followerId  String   @db.Uuid
+  followingId String   @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  jobs      Job[]
+  follower  User @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
 
-  @@map("recruiters")
+  @@id([followerId, followingId])
+  @@map("follows")
 }
 
-model CompanyFollower {
-  companyId String   @db.Uuid
+model Post {
+  id         String     @id @default(uuid()) @db.Uuid
+  userId     String     @db.Uuid
+  companyId  String?    @db.Uuid
+  content    String
+  visibility Visibility @default(PUBLIC)
+  createdAt  DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime   @updatedAt @map("updated_at") @db.Timestamptz
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  media    PostMedia[]
+  comments Comment[]
+  likes    Like[]
+
+  @@index([userId])
+  @@index([companyId])
+  @@index([createdAt])
+  @@map("posts")
+}
+
+model PostMedia {
+  id     String    @id @default(uuid()) @db.Uuid
+  postId String    @db.Uuid
+  url    String
+  type   MediaType
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
+  @@map("post_media")
+}
+
+model Comment {
+  id              String   @id @default(uuid()) @db.Uuid
+  postId          String   @db.Uuid
+  userId          String   @db.Uuid
+  parentCommentId String?  @map("parent_comment_id") @db.Uuid
+  content         String
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  post    Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent  Comment?  @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
+  replies Comment[] @relation("CommentReplies")
+
+  @@index([postId])
+  @@index([parentCommentId])
+  @@map("comments")
+}
+
+model Like {
+  postId    String   @db.Uuid
   userId    String   @db.Uuid
-  createdAt DateTime @default(now()) @db.Timestamptz
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@id([companyId, userId])
-  @@map("company_followers")
-}
-
-model CompanyVerification {
-  id          String   @id @default(uuid()) @db.Uuid
-  companyId   String   @db.Uuid
-  documentUrl String   @map("document_url")
-  status      String   @default("PENDING")
-  createdAt   DateTime @default(now()) @db.Timestamptz
-  updatedAt   DateTime @updatedAt @db.Timestamptz
-
-  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-
-  @@map("company_verifications")
-}
-
-model CompanyAnalytics {
-  id        String   @id @default(uuid()) @db.Uuid
-  companyId String   @db.Uuid
-  views     Int      @default(0)
-  clicks    Int      @default(0)
-  date      DateTime @db.Timestamptz
-  createdAt DateTime @default(now()) @db.Timestamptz
-
-  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-
-  @@map("company_analytics")
+  @@id([postId, userId])
+  @@map("likes")
 }
 
 // ==========================================
-// JOB MODELS
+// JOBS & APPLICATIONS
 // ==========================================
 
 model Job {
-  id            String         @id @default(uuid()) @db.Uuid
-  companyId     String         @db.Uuid
-  recruiterId   String         @db.Uuid
-  title         String
-  description   String
-  location      String
-  salaryRange   String?        @map("salary_range")
-  type          JobType        @default(FULL_TIME)
+  id          String    @id @default(uuid()) @db.Uuid
+  companyId   String    @db.Uuid
+  recruiterId String    @db.Uuid
+  title       String
+  description String
+  location    String
+  publishedAt DateTime?
+
+  experienceLevel String?   @map("experience_level")
+  deadline        DateTime? @db.Timestamptz
+  vacancies       Int?
+  benefits        String?
+
+  salaryMin Int?    @map("salary_min")
+  salaryMax Int?    @map("salary_max")
+  currency  String? @default("USD")
+
+  type           JobType        @default(FULL_TIME)
   employmentType EmploymentType @default(ON_SITE)
-  isClosed      Boolean        @default(false) @map("is_closed")
-  createdAt     DateTime       @default(now()) @db.Timestamptz
-  updatedAt     DateTime       @updatedAt @db.Timestamptz
+  isClosed       Boolean        @default(false) @map("is_closed")
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz
 
-  company       Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  recruiter     Recruiter      @relation(fields: [recruiterId], references: [id], onDelete: Cascade)
-  skills        JobSkill[]
-  savedJobs     SavedJob[]
-  applications  Application[]
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  recruiter User    @relation("RecruiterJobs", fields: [recruiterId], references: [id], onDelete: Cascade)
 
+  skills       JobSkill[]
+  applications Application[]
+  savedBy      SavedJob[]
+
+  @@index([companyId])
+  @@index([createdAt])
+  @@index([publishedAt])
+  @@index([location])
+  @@index([type])
+  @@index([employmentType])
+  @@index([isClosed])
   @@map("jobs")
 }
 
 model JobSkill {
   jobId   String @db.Uuid
-  skillId Int
-  job     Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  skill   Skill  @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  skillId String @db.Uuid
+
+  job   Job   @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  skill Skill @relation(fields: [skillId], references: [id], onDelete: Cascade)
 
   @@id([jobId, skillId])
   @@map("job_skills")
@@ -581,398 +490,201 @@ model JobSkill {
 model SavedJob {
   userId    String   @db.Uuid
   jobId     String   @db.Uuid
-  createdAt DateTime @default(now()) @db.Timestamptz
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job  Job  @relation(fields: [jobId], references: [id], onDelete: Cascade)
 
   @@id([userId, jobId])
   @@map("saved_jobs")
 }
 
 model Application {
-  id        String            @id @default(uuid()) @db.Uuid
-  jobId     String            @db.Uuid
-  userId    String            @db.Uuid
-  resumeUrl String            @map("resume_url")
-  status    ApplicationStatus @default(SUBMITTED)
-  createdAt DateTime          @default(now()) @db.Timestamptz
-  updatedAt DateTime          @updatedAt @db.Timestamptz
+  id             String            @id @default(uuid()) @db.Uuid
+  jobId          String            @db.Uuid
+  userId         String            @db.Uuid
+  resumeUrl      String            @map("resume_url")
+  coverLetter    String?           @map("cover_letter")
+  expectedSalary Int?              @map("expected_salary")
+  noticePeriod   String?           @map("notice_period")
+  status         ApplicationStatus @default(PENDING)
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime          @updatedAt @map("updated_at") @db.Timestamptz
 
-  job       Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job  Job  @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   interviews Interview[]
-  offers    Offer[]
-  hiringStatuses HiringStatus[]
 
+  @@index([jobId, status])
+  @@index([userId])
   @@map("applications")
 }
 
 model Interview {
-  id            String          @id @default(uuid()) @db.Uuid
-  applicationId String          @db.Uuid
-  interviewerId String          @db.Uuid
-  scheduledAt   DateTime        @map("scheduled_at") @db.Timestamptz
-  status        InterviewStatus @default(SCHEDULED)
-  feedback      String?
-  createdAt     DateTime        @default(now()) @db.Timestamptz
-  updatedAt     DateTime        @updatedAt @db.Timestamptz
+  id            String           @id @default(uuid()) @db.Uuid
+  applicationId String           @db.Uuid
+  mode          InterviewMode?
+  status        InterviewStatus?
+  location      String?
+  scheduledAt   DateTime         @map("scheduled_at") @db.Timestamptz
+  notes         String?
+  createdAt     DateTime         @default(now()) @map("created_at") @db.Timestamptz
 
-  application   Application     @relation(fields: [applicationId], references: [id], onDelete: Cascade)
-  interviewer   User            @relation("Interviewer", fields: [interviewerId], references: [id], onDelete: Cascade)
-  rounds        InterviewRound[]
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
 
+  @@index([applicationId])
   @@map("interviews")
 }
 
-model InterviewRound {
-  id          String   @id @default(uuid()) @db.Uuid
-  interviewId String   @db.Uuid
-  roundNumber Int      @map("round_number")
-  score       Int?
-  notes       String?
-  createdAt   DateTime @default(now()) @db.Timestamptz
-
-  interview   Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
-
-  @@map("interview_rounds")
-}
-
-model Offer {
-  id            String      @id @default(uuid()) @db.Uuid
-  applicationId String      @db.Uuid
-  salary        Float
-  startDate     DateTime    @map("start_date") @db.Timestamptz
-  expiryDate    DateTime    @map("expiry_date") @db.Timestamptz
-  status        OfferStatus @default(PENDING)
-  createdAt     DateTime    @default(now()) @db.Timestamptz
-  updatedAt     DateTime    @updatedAt @db.Timestamptz
-
-  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
-
-  @@map("offers")
-}
-
-model HiringStatus {
-  id            String    @id @default(uuid()) @db.Uuid
-  applicationId String    @db.Uuid
-  notes         String?
-  joinedAt      DateTime? @map("joined_at") @db.Timestamptz
-  createdAt     DateTime  @default(now()) @db.Timestamptz
-
-  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
-
-  @@map("hiring_statuses")
-}
-
 // ==========================================
-// SOCIAL MODELS
-// ==========================================
-
-model Post {
-  id        String   @id @default(uuid()) @db.Uuid
-  userId    String   @map("user_id") @db.Uuid
-  companyId String?  @map("company_id") @db.Uuid
-  content   String
-  imageUrl  String?  @map("image_url")
-  likes     Int      @default(0)
-  comments  Int      @default(0)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
-
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  company   Company? @relation("CompanyPosts", fields: [companyId], references: [id], onDelete: SetNull)
-
-  postMedia PostMedia[]
-  commentsList Comment[]
-  likesList Like[]
-  bookmarks Bookmark[]
-  shares Share[]
-
-  @@map("posts")
-}
-
-model PostMedia {
-  id        String   @id @default(uuid()) @db.Uuid
-  postId    String   @db.Uuid
-  fileUrl   String   @map("file_url")
-  fileType  String   @map("file_type")
-  createdAt DateTime @default(now()) @db.Timestamptz
-
-  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-
-  @@map("post_media")
-}
-
-model Comment {
-  id        String   @id @default(uuid()) @db.Uuid
-  postId    String   @db.Uuid
-  userId    String   @db.Uuid
-  content   String
-  createdAt DateTime @default(now()) @db.Timestamptz
-  updatedAt DateTime @updatedAt @db.Timestamptz
-
-  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("comments")
-}
-
-model Like {
-  id        String   @id @default(uuid()) @db.Uuid
-  postId    String   @db.Uuid
-  userId    String   @db.Uuid
-  createdAt DateTime @default(now()) @db.Timestamptz
-
-  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([postId, userId])
-  @@map("likes")
-}
-
-model Bookmark {
-  id        String   @id @default(uuid()) @db.Uuid
-  postId    String   @db.Uuid
-  userId    String   @db.Uuid
-  createdAt DateTime @default(now()) @db.Timestamptz
-
-  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([postId, userId])
-  @@map("bookmarks")
-}
-
-model Share {
-  id        String   @id @default(uuid()) @db.Uuid
-  postId    String   @db.Uuid
-  userId    String   @db.Uuid
-  createdAt DateTime @default(now()) @db.Timestamptz
-
-  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("shares")
-}
-
-model Connection {
-  id         String   @id @default(uuid()) @db.Uuid
-  senderId   String   @map("sender_id") @db.Uuid
-  receiverId String   @map("receiver_id") @db.Uuid
-  status     String   @default("PENDING")
-  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz
-
-  sender     User     @relation("SentConnections", fields: [senderId], references: [id], onDelete: Cascade)
-  receiver   User     @relation("ReceivedConnections", fields: [receiverId], references: [id], onDelete: Cascade)
-
-  @@unique([senderId, receiverId])
-  @@map("connections")
-}
-
-model Follow {
-  followerId  String   @db.Uuid
-  followingId String   @db.Uuid
-  createdAt   DateTime @default(now()) @db.Timestamptz
-
-  follower    User     @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
-  following   User     @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
-
-  @@id([followerId, followingId])
-  @@map("follows")
-}
-
-// ==========================================
-// MESSAGING MODELS
+// MESSAGING
 // ==========================================
 
 model Conversation {
   id        String   @id @default(uuid()) @db.Uuid
+  isGroup   Boolean  @default(false) @map("is_group")
   title     String?
-  createdAt DateTime @default(now()) @db.Timestamptz
-  updatedAt DateTime @updatedAt @db.Timestamptz
+  imageUrl  String?  @map("image_url")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
-  members   ConversationMember[]
-  messages  Message[]
+  members  ConversationMember[]
+  messages Message[]
 
   @@map("conversations")
 }
 
 model ConversationMember {
-  conversationId String       @db.Uuid
-  userId         String       @db.Uuid
-  joinedAt       DateTime     @default(now()) @db.Timestamptz
+  conversationId String   @db.Uuid
+  userId         String   @db.Uuid
+  lastReadAt     DateTime @default(now()) @map("last_read_at") @db.Timestamptz
 
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([conversationId, userId])
+  @@index([userId])
   @@map("conversation_members")
 }
 
 model Message {
-  id             String              @id @default(uuid()) @db.Uuid
-  conversationId String              @db.Uuid
-  senderId       String              @db.Uuid
+  id             String    @id @default(uuid()) @db.Uuid
+  conversationId String    @db.Uuid
+  senderId       String    @db.Uuid
   content        String
-  type           MessageType         @default(TEXT)
-  createdAt      DateTime            @default(now()) @db.Timestamptz
-  updatedAt      DateTime            @updatedAt @db.Timestamptz
+  replyToId      String?   @db.Uuid
+  isEdited       Boolean   @default(false) @map("is_edited")
+  deletedAt      DateTime? @db.Timestamptz
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 
-  conversation   Conversation        @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  sender         User                @relation(fields: [senderId], references: [id], onDelete: Cascade)
-  attachments    MessageAttachment[]
-  readReceipts   ReadReceipt[]
+  conversation Conversation        @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User                @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  replyTo      Message?            @relation("MessageReplies", fields: [replyToId], references: [id])
+  replies      Message[]           @relation("MessageReplies")
+  attachments  MessageAttachment[]
 
+  @@index([conversationId, createdAt])
   @@map("messages")
 }
 
 model MessageAttachment {
-  id        String   @id @default(uuid()) @db.Uuid
-  messageId String   @db.Uuid
-  fileUrl   String   @map("file_url")
-  fileType  String   @map("file_type")
-  createdAt DateTime @default(now()) @db.Timestamptz
+  id        String    @id @default(uuid()) @db.Uuid
+  messageId String    @db.Uuid
+  fileUrl   String    @map("file_url")
+  fileType  MediaType @map("file_type")
 
-  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
 
+  @@index([messageId])
   @@map("message_attachments")
 }
 
-model ReadReceipt {
-  id        String   @id @default(uuid()) @db.Uuid
-  messageId String   @db.Uuid
-  userId    String   @db.Uuid
-  readAt    DateTime @default(now()) @db.Timestamptz
-
-  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([messageId, userId])
-  @@map("read_receipts")
-}
-
 // ==========================================
-// NOTIFICATIONS MODELS
+// NOTIFICATIONS
 // ==========================================
 
 model Notification {
-  id        String           @id @default(uuid()) @db.Uuid
-  userId    String           @db.Uuid
-  type      NotificationType
-  content   String
-  isRead    Boolean          @default(false) @map("is_read")
-  createdAt DateTime         @default(now()) @db.Timestamptz
+  id         String                  @id @default(uuid()) @db.Uuid
+  userId     String                  @db.Uuid
+  type       NotificationType
+  title      String?
+  content    String
+  link       String?
+  imageUrl   String?                 @map("image_url")
+  entityId   String?                 @map("entity_id")
+  entityType NotificationEntityType? @map("entity_type")
+  isRead     Boolean                 @default(false) @map("is_read")
+  createdAt  DateTime                @default(now()) @map("created_at") @db.Timestamptz
 
-  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId, isRead])
   @@map("notifications")
 }
 
-model NotificationPreference {
-  userId    String           @db.Uuid
-  type      NotificationType
-  isEnabled Boolean          @default(true) @map("is_enabled")
-
-  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@id([userId, type])
-  @@map("notification_preferences")
-}
-
 // ==========================================
-// SEARCH MODELS
-// ==========================================
-
-model SearchHistory {
-  id        String   @id @default(uuid()) @db.Uuid
-  userId    String   @db.Uuid
-  query     String
-  createdAt DateTime @default(now()) @db.Timestamptz
-
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("search_histories")
-}
-
-// ==========================================
-// RECOMMENDATION MODELS
+// RECOMMENDATIONS
 // ==========================================
 
 model RecommendationFeedback {
-  id         String   @id @default(uuid()) @db.Uuid
-  userId     String   @db.Uuid
-  targetId   String   @db.Uuid
-  action     String
-  feedbackAt DateTime @default(now()) @db.Timestamptz
+  id        String               @id @default(uuid()) @db.Uuid
+  userId    String               @db.Uuid
+  targetId  String               @db.Uuid
+  action    RecommendationAction
+  createdAt DateTime             @default(now()) @map("created_at") @db.Timestamptz
 
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
   @@map("recommendation_feedbacks")
 }
 
-model RecommendationCache {
-  id         String   @id @default(uuid()) @db.Uuid
-  userId     String   @unique @db.Uuid
-  results    Json
-  cachedAt   DateTime @default(now()) @db.Timestamptz
+// ==========================================
+// SEARCH & ADMIN
+// ==========================================
 
-  @@map("recommendation_caches")
+model SearchHistory {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @db.Uuid
+  query       String
+  resultCount Int?     @map("result_count")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("search_histories")
 }
-
-// ==========================================
-// ADMINISTRATION MODELS
-// ==========================================
 
 model AuditLog {
   id        String   @id @default(uuid()) @db.Uuid
   userId    String?  @db.Uuid
   action    String
   details   String?
-  createdAt DateTime @default(now()) @db.Timestamptz
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
+  @@index([userId])
+  @@index([createdAt])
   @@map("audit_logs")
 }
 
 model Report {
-  id          String       @id @default(uuid()) @db.Uuid
-  reporterId  String       @db.Uuid
-  targetType  String
-  targetId    String       @db.Uuid
-  reason      String
-  status      ReportStatus @default(PENDING)
-  createdAt   DateTime     @default(now()) @db.Timestamptz
-  resolvedAt  DateTime?    @db.Timestamptz
+  id         String           @id @default(uuid()) @db.Uuid
+  reporterId String           @db.Uuid
+  targetType ReportTargetType @map("target_type")
+  targetId   String           @db.Uuid
+  reason     String
+  status     ReportStatus     @default(PENDING)
+  createdAt  DateTime         @default(now()) @map("created_at") @db.Timestamptz
 
-  reporter    User         @relation("Reporter", fields: [reporterId], references: [id], onDelete: Cascade)
-  actions     ModerationAction[]
+  reporter User @relation("Reporter", fields: [reporterId], references: [id], onDelete: Cascade)
 
+  @@index([reporterId])
+  @@index([status])
   @@map("reports")
-}
-
-model ModerationAction {
-  id           String   @id @default(uuid()) @db.Uuid
-  reportId     String?  @db.Uuid
-  moderatorId  String   @db.Uuid
-  targetUserId String   @db.Uuid
-  action       String
-  notes        String?
-  createdAt    DateTime @default(now()) @db.Timestamptz
-
-  report       Report?  @relation(fields: [reportId], references: [id], onDelete: SetNull)
-  moderator    User     @relation("Moderator", fields: [moderatorId], references: [id], onDelete: Cascade)
-  targetUser   User     @relation("TargetUser", fields: [targetUserId], references: [id], onDelete: Cascade)
-
-  @@map("moderation_actions")
-}
-
-model SystemSetting {
-  key       String   @id
-  value     String
-  updatedAt DateTime @updatedAt @db.Timestamptz
-
-  @@map("system_settings")
 }
