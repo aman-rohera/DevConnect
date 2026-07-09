@@ -36,8 +36,12 @@ const getPendingRequests = async (userId) => {
         select: {
           id: true,
           fullName: true,
-          headline: true,
-          avatarUrl: true
+          profile: {
+            select: {
+              headline: true,
+              avatarUrl: true
+            }
+          }
         }
       }
     }
@@ -53,26 +57,32 @@ const respondToRequest = async (connectionId, receiverId, action) => {
     throw new Error('Connection request not found');
   }
 
+  if (action === 'REJECT') {
+    // Delete the pending connection instead of updating it to 'REJECTED' since it is not in the Enum
+    const deleted = await prisma.connection.delete({
+      where: { id: connectionId }
+    });
+    return deleted;
+  }
+
   const updated = await prisma.connection.update({
     where: { id: connectionId },
-    data: { status: action === 'ACCEPT' ? 'ACCEPTED' : 'REJECTED' }
+    data: { status: 'ACCEPTED' }
   });
 
-  if (action === 'ACCEPT') {
-    // Create relationship in Neo4j
-    const session = getNeo4jSession();
-    try {
-      await session.run(
-        `MATCH (u1:User {id: $u1Id}), (u2:User {id: $u2Id})
-         MERGE (u1)-[:CONNECTED_TO]->(u2)
-         MERGE (u2)-[:CONNECTED_TO]->(u1)`,
-        { u1Id: connection.senderId, u2Id: connection.receiverId }
-      );
-    } catch (err) {
-      console.error('Failed to create neo4j connection relationship', err);
-    } finally {
-      await session.close();
-    }
+  // Create relationship in Neo4j
+  const session = getNeo4jSession();
+  try {
+    await session.run(
+      `MATCH (u1:User {id: $u1Id}), (u2:User {id: $u2Id})
+       MERGE (u1)-[:CONNECTED_TO]->(u2)
+       MERGE (u2)-[:CONNECTED_TO]->(u1)`,
+      { u1Id: connection.senderId, u2Id: connection.receiverId }
+    );
+  } catch (err) {
+    console.error('Failed to create neo4j connection relationship', err);
+  } finally {
+    await session.close();
   }
 
   return updated;
@@ -84,7 +94,28 @@ const getConnections = async (userId) => {
       OR: [
         { senderId: userId },
         { receiverId: userId }
-      ]
+      ],
+      status: 'ACCEPTED'
+    },
+    include: {
+      sender: {
+        select: {
+          id: true,
+          fullName: true,
+          profile: {
+            select: { headline: true, avatarUrl: true }
+          }
+        }
+      },
+      receiver: {
+        select: {
+          id: true,
+          fullName: true,
+          profile: {
+            select: { headline: true, avatarUrl: true }
+          }
+        }
+      }
     }
   });
 };

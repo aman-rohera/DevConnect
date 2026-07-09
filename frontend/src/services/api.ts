@@ -34,6 +34,7 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
   }
 
   const config: RequestInit = {
+    credentials: 'include',
     headers: {
       ...defaultHeaders,
       ...(headers as Record<string, string>),

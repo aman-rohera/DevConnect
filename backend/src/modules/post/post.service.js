@@ -1,21 +1,31 @@
 import prisma from '../../config/db.js';
 
-const createPost = async (userId, content, imageUrl) => {
+const createPost = async (userId, content, mediaUrls = []) => {
   return prisma.post.create({
     data: {
       userId,
       content,
-      imageUrl
+      media: {
+        create: mediaUrls.map(url => ({
+          url,
+          type: 'IMAGE' // Defaulting to IMAGE for now, can be updated later
+        }))
+      }
     },
     include: {
       user: {
         select: {
           id: true,
           fullName: true,
-          headline: true,
-          avatarUrl: true
+          profile: {
+            select: {
+              headline: true,
+              avatarUrl: true
+            }
+          }
         }
-      }
+      },
+      media: true
     }
   });
 };
@@ -32,10 +42,15 @@ const getFeedPosts = async () => {
         select: {
           id: true,
           fullName: true,
-          headline: true,
-          avatarUrl: true
+          profile: {
+            select: {
+              headline: true,
+              avatarUrl: true
+            }
+          }
         }
-      }
+      },
+      media: true
     }
   });
 };

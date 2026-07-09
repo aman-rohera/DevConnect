@@ -9,6 +9,8 @@ const syncUserToNeo4j = async (userId) => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     include: {
+      profile: true,
+      education: true,
       skills: {
         include: { skill: true }
       }
@@ -28,8 +30,8 @@ const syncUserToNeo4j = async (userId) => {
       {
         id: user.id,
         fullName: user.fullName || '',
-        headline: user.headline || '',
-        avatarUrl: user.avatarUrl || ''
+        headline: user.profile?.headline || '',
+        avatarUrl: user.profile?.avatarUrl || ''
       }
     );
 
@@ -43,16 +45,18 @@ const syncUserToNeo4j = async (userId) => {
     );
 
     // 3. Upsert Skills and Create Relationships
-    for (const userSkill of user.skills) {
-      const skillName = userSkill.skill.name;
-      await session.run(
-        `
-        MATCH (u:User {id: $userId})
-        MERGE (s:Skill {name: $skillName})
-        MERGE (u)-[:HAS_SKILL]->(s)
-        `,
-        { userId: user.id, skillName: skillName.trim() }
-      );
+    if (user.skills && Array.isArray(user.skills)) {
+      for (const userSkill of user.skills) {
+        const skillName = userSkill.skill.name;
+        await session.run(
+          `
+          MATCH (u:User {id: $userId})
+          MERGE (s:Skill {name: $skillName})
+          MERGE (u)-[:HAS_SKILL]->(s)
+          `,
+          { userId: user.id, skillName: skillName.trim() }
+        );
+      }
     }
 
     // 4. Upsert Education/Schools
@@ -65,7 +69,7 @@ const syncUserToNeo4j = async (userId) => {
       { id: user.id }
     );
 
-    if (Array.isArray(user.education)) {
+    if (user.education && Array.isArray(user.education)) {
       for (const edu of user.education) {
         if (edu && edu.school) {
           const schoolName = edu.school.trim();

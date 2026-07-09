@@ -2,19 +2,26 @@ import prisma from '../../config/db.js';
 import { syncUserToNeo4j } from '../recommendation/recommendation.service.js';
 
 const getUserProfile = async (userId) => {
-  const profile = await prisma.user.findUnique({
+  const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
       id: true,
       email: true,
       fullName: true,
-      headline: true,
-      bio: true,
-      avatarUrl: true,
-      education: true,
-      experience: true,
-      certificates: true,
+      role: true,
       createdAt: true,
+      profile: {
+        select: {
+          headline: true,
+          bio: true,
+          location: true,
+          website: true,
+          avatarUrl: true,
+          coverUrl: true,
+        }
+      },
+      education: true,
+      experiences: true, // Note: It's 'experiences' in the new schema
       projects: true,
       skills: {
         select: {
@@ -28,26 +35,58 @@ const getUserProfile = async (userId) => {
     }
   });
 
-  if (!profile) return null;
+  if (!user) return null;
 
   // Flatten the skills array so it returns simple string array like ["React.js", "Node.js"]
-  const formattedSkills = profile.skills.map(s => s.skill.name);
-  return { ...profile, skills: formattedSkills };
+  const formattedSkills = user.skills ? user.skills.map(s => s.skill.name) : [];
+  
+  // Format response to maintain backward compatibility or align with expected format
+  return { 
+    id: user.id,
+    email: user.email,
+    fullName: user.fullName,
+    role: user.role,
+    createdAt: user.createdAt,
+    headline: user.profile?.headline || null,
+    bio: user.profile?.bio || null,
+    location: user.profile?.location || null,
+    website: user.profile?.website || null,
+    avatarUrl: user.profile?.avatarUrl || null,
+    coverUrl: user.profile?.coverUrl || null,
+    education: user.education || [],
+    experience: user.experiences || [],
+    projects: user.projects || [],
+    skills: formattedSkills
+  };
 };
 
 const updateUserProfile = async (userId, data) => {
-  const { headline, bio, avatarUrl, skills, projects, education, experience, certificates } = data;
+  const { headline, bio, location, website, avatarUrl, coverUrl, skills } = data;
 
-  // 1. Update basic profile info & JSON fields
+  // 1. Update basic profile info
   await prisma.user.update({
     where: { id: userId },
     data: { 
-      headline, 
-      bio, 
-      avatarUrl,
-      education: education || [],
-      experience: experience || [],
-      certificates: certificates || []
+      profile: {
+        upsert: {
+          create: {
+            headline,
+            bio,
+            location,
+            website,
+            avatarUrl,
+            coverUrl
+          },
+          update: {
+            headline,
+            bio,
+            location,
+            website,
+            avatarUrl,
+            coverUrl
+          }
+        }
+      }
     }
   });
 
@@ -60,6 +99,7 @@ const updateUserProfile = async (userId, data) => {
 
     // Link new skills
     for (const skillName of skills) {
+      if (!skillName) continue;
       // Upsert the skill in the master table (find or create)
       const skill = await prisma.skill.upsert({
         where: { name: skillName.trim() },
@@ -77,26 +117,8 @@ const updateUserProfile = async (userId, data) => {
     }
   }
 
-  // 3. If projects are provided, update projects table
-  if (projects && Array.isArray(projects)) {
-    // Delete existing project links
-    await prisma.project.deleteMany({
-      where: { userId }
-    });
-
-    // Insert new projects
-    for (const proj of projects) {
-      await prisma.project.create({
-        data: {
-          userId,
-          title: proj.title,
-          description: proj.description,
-          projectUrl: proj.projectUrl || '',
-          repoUrl: proj.repoUrl || ''
-        }
-      });
-    }
-  }
+  // Note: Education, Experience, and Projects should be managed through their respective specific endpoints
+  // in a properly normalized architecture, instead of a massive monolith update. We skip bulk replacing them here.
 
   // 4. Sync profile to Neo4j for recommendations
   try {

@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import type { ReactNode } from 'react';
-import type { User, Session, ApiResponse } from '../types';
+import type { User, ApiResponse } from '../types';
 import { api } from '../services/api';
 
 interface AuthContextType {
@@ -31,10 +31,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Expose function to refresh user from backend
   const refreshUser = async () => {
-    const storedToken = localStorage.getItem('dc_token');
-    if (!storedToken) return;
     try {
-      const response = await api.get<ApiResponse<{ user: User }>>('/auth/me', { token: storedToken });
+      const response = await api.get<ApiResponse<{ user: User }>>('/auth/me');
       if (response.success && response.data.user) {
         setUser(response.data.user);
       }
@@ -46,25 +44,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Restore session on application load
   useEffect(() => {
     const restoreSession = async () => {
-      const storedToken = localStorage.getItem('dc_token');
-      if (!storedToken) {
-        setIsLoading(false);
-        return;
-      }
-
       try {
-        setToken(storedToken);
-        const response = await api.get<ApiResponse<{ user: User }>>('/auth/me', { token: storedToken });
+        const response = await api.get<ApiResponse<{ user: User }>>('/auth/me');
         if (response.success && response.data.user) {
           setUser(response.data.user);
+          setToken('cookie-based');
         } else {
-          // Token is invalid/expired
-          logout();
+          setUser(null);
         }
       } catch (err) {
-        console.warn('Failed to restore active session:', err);
-        // Clear token since it's likely invalid/expired
-        logout();
+        // Expected when user is not logged in (no cookies or invalid)
+        setUser(null);
       } finally {
         setIsLoading(false);
       }
@@ -78,15 +68,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setIsLoading(true);
     setError(null);
     try {
-      const response = await api.post<ApiResponse<{ session: Session; user: User }>>('/auth/login', {
+      const response = await api.post<ApiResponse<{ user: User }>>('/auth/login', {
         email,
         password,
       });
 
       if (response.success && response.data) {
-        const { session, user: loggedUser } = response.data;
-        localStorage.setItem('dc_token', session.access_token);
-        setToken(session.access_token);
+        const { user: loggedUser } = response.data;
+        setToken('cookie-based');
         setUser(loggedUser);
       }
     } catch (err: any) {
@@ -117,21 +106,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       });
 
       if (response.success) {
-        try {
-          // Automatically login the user after successful registration
-          await login(email, password);
-        } catch (loginErr: any) {
-          // Intercept common email-confirmation responses:
-          // 1. "Email not confirmed"
-          // 2. "Invalid login credentials" (which Supabase returns when email is unconfirmed and user enumeration protection is enabled)
-          const isConfirm = loginErr.message && loginErr.message.toLowerCase().includes('confirm');
-          const isCredentials = loginErr.message && loginErr.message.toLowerCase().includes('credentials');
-
-          if (isConfirm || isCredentials) {
-            throw new Error('Registration successful! A confirmation email has been sent. Please check your inbox and verify your email before logging in.');
-          }
-          throw new Error(`Registration successful! However, auto-login failed: ${loginErr.message || 'Please log in manually.'}`);
-        }
+        // Registration was successful, do not auto-login
+        // Let the component handle redirection to the login page
       }
     } catch (err: any) {
       setError(err.message || 'Registration failed. Please try again.');
@@ -182,10 +158,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Logout handler
   const logout = () => {
+    // Optimistically clear local state for instant UI response (redirects to /login)
     localStorage.removeItem('dc_token');
     setToken(null);
     setUser(null);
     setError(null);
+
+    // Inform backend to clear HTTP-only cookies and DB session asynchronously
+    api.post('/auth/logout', {}).catch(err => {
+      console.warn('Logout request failed:', err);
+    });
   };
 
   return (
