@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Home, Bell, Users, User as UserIcon, Settings,
-  Search, Plus, LogOut, Sparkles, MessageSquare,
+  Search, Plus, LogOut, Sparkles, MessageSquare, Briefcase,
 } from "lucide-react";
 import { useAppData } from "@/lib/app-data";
 import { useChatUnread } from "@/lib/chat-data";
@@ -24,6 +24,7 @@ const nav = [
   { to: "/messages", label: "Messages", icon: MessageSquare, messagesBadge: true },
   { to: "/notifications", label: "Notifications", icon: Bell, badge: true },
   { to: "/connections", label: "Connections", icon: Users },
+  { to: "/jobs", label: "Jobs", icon: Briefcase },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {

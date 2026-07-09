@@ -11,6 +11,8 @@ import { ConnectionsPage } from "@/pages/ConnectionsPage";
 import { MessagesPage } from "@/pages/MessagesPage";
 import { NotificationsPage } from "@/pages/NotificationsPage";
 import { SettingsPage } from "@/pages/SettingsPage";
+import { JobsPage } from "@/pages/JobsPage";
+import { OnboardingPage } from "@/pages/OnboardingPage";
 import { AppShell } from "@/components/layout/AppShell";
 import { AppDataProvider } from "@/lib/app-data";
 import { ChatDataProvider } from "@/lib/chat-data";
@@ -137,7 +139,17 @@ function App() {
                   <Route path="/connections" element={<ConnectionsPage />} />
                   <Route path="/messages" element={<MessagesPage />} />
                   <Route path="/notifications" element={<NotificationsPage />} />
+                  <Route path="/jobs" element={<JobsPage />} />
                 </Route>
+
+                <Route
+                  path="/onboarding"
+                  element={
+                    <ProtectedRoute>
+                      <OnboardingPage />
+                    </ProtectedRoute>
+                  }
+                />
 
                 {/* Fallback Catch-All */}
                 <Route path="*" element={<Navigate to="/" replace />} />
