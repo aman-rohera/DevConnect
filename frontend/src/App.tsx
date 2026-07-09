@@ -4,7 +4,6 @@ import { Login } from "@/pages/Login";
 import { Register } from "@/pages/Register";
 import { Dashboard } from "@/pages/Dashboard";
 import { Profile } from "@/pages/Profile";
-import { Recommendations } from "@/pages/Recommendations";
 import { ResetPassword } from "@/pages/ResetPassword";
 import { ForgotPasswordPage } from "@/pages/ForgotPasswordPage";
 import { ExplorePage } from "@/pages/ExplorePage";
@@ -133,7 +132,7 @@ function App() {
                   <Route path="/profile" element={<ProfileRouteWrapper />} />
                   <Route path="/profile/:id" element={<ProfileRouteWrapper />} />
                   <Route path="/settings" element={<SettingsPage />} />
-                  <Route path="/recommendations" element={<Recommendations />} />
+                  <Route path="/recommendations" element={<Navigate to="/connections" replace />} />
                   <Route path="/explore" element={<ExplorePage />} />
                   <Route path="/connections" element={<ConnectionsPage />} />
                   <Route path="/messages" element={<MessagesPage />} />

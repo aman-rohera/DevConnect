@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
-  Home, Compass, Bell, Users, User as UserIcon, Settings,
+  Home, Bell, Users, User as UserIcon, Settings,
   Search, Plus, LogOut, Sparkles, MessageSquare,
 } from "lucide-react";
 import { useAppData } from "@/lib/app-data";
@@ -21,7 +21,6 @@ import { Kbd } from "@/components/ui/kbd";
 const nav = [
   { to: "/", label: "Home", icon: Home, exact: true },
   { to: "/explore", label: "Explore", icon: Search },
-  { to: "/recommendations", label: "Network", icon: Compass },
   { to: "/messages", label: "Messages", icon: MessageSquare, messagesBadge: true },
   { to: "/notifications", label: "Notifications", icon: Bell, badge: true },
   { to: "/connections", label: "Connections", icon: Users },
