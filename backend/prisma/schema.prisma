@@ -12,6 +12,12 @@ generator client {
 // ENUMS
 // ==========================================
 
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum UserRole {
   USER
   ADMIN
@@ -182,6 +188,10 @@ model User {
   auditLogs      AuditLog[]
   reportsCreated Report[]   @relation("Reporter")
   followedCompanies CompanyFollower[]
+  companyRequests CompanyCreationRequest[] @relation("CompanyRequester")
+  reviewedRequests CompanyCreationRequest[] @relation("CompanyReviewer")
+
+  isSuspended  Boolean  @default(false) @map("is_suspended")
 
   @@map("users")
 }
@@ -323,6 +333,7 @@ model Company {
   recruiters  Recruiter[]
   departments Department[]
   followers   CompanyFollower[]
+  isSuspended Boolean  @default(false) @map("is_suspended")
 
   @@map("companies")
 }
@@ -465,6 +476,7 @@ model Job {
   type           JobType        @default(FULL_TIME)
   employmentType EmploymentType @default(ON_SITE)
   isClosed       Boolean        @default(false) @map("is_closed")
+  isSuspended    Boolean        @default(false) @map("is_suspended")
   createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz
 
@@ -755,4 +767,35 @@ model Certificate {
   profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
   @@map("certificates")
+}
+
+// ==========================================
+// COMPANY REQUESTS
+// ==========================================
+
+model CompanyCreationRequest {
+  id              String        @id @default(uuid()) @db.Uuid
+  requesterId     String        @map("requester_id") @db.Uuid
+  companyName     String        @map("company_name")
+  slug            String        @unique
+  website         String?
+  industry        String?
+  size            String?
+  headquarters    String?
+  description     String?
+  logoUrl         String?       @map("logo_url")
+  coverUrl        String?       @map("cover_url")
+  status          RequestStatus @default(PENDING)
+  rejectionReason String?       @map("rejection_reason")
+  reviewedById    String?       @map("reviewed_by_id") @db.Uuid
+  reviewedAt      DateTime?     @map("reviewed_at") @db.Timestamptz
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+
+  requester User  @relation("CompanyRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  reviewer  User? @relation("CompanyReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([requesterId])
+  @@index([status])
+  @@map("company_creation_requests")
 }

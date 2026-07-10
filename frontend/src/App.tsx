@@ -12,6 +12,8 @@ import { MessagesPage } from "@/pages/MessagesPage";
 import { NotificationsPage } from "@/pages/NotificationsPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { JobsPage } from "@/pages/JobsPage";
+import { CreateCompanyPage } from "@/pages/CreateCompanyPage";
+import { AdminDashboardPage } from "@/pages/AdminDashboardPage";
 import { OnboardingPage } from "@/pages/OnboardingPage";
 import { AppShell } from "@/components/layout/AppShell";
 import { AppDataProvider } from "@/lib/app-data";
@@ -140,6 +142,8 @@ function App() {
                   <Route path="/messages" element={<MessagesPage />} />
                   <Route path="/notifications" element={<NotificationsPage />} />
                   <Route path="/jobs" element={<JobsPage />} />
+                  <Route path="/companies/create" element={<CreateCompanyPage />} />
+                  <Route path="/admin" element={<AdminDashboardPage />} />
                 </Route>
 
                 <Route

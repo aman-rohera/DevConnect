@@ -49,6 +49,7 @@ export interface User {
   fullName: string;
   headline?: string;
   avatarUrl?: string;
+  role?: string;
   profile?: Profile | null;
 }
 

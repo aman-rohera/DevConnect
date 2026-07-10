@@ -22,6 +22,7 @@ export function MessageComposer({
   const [value, setValue] = useState("");
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -47,23 +48,30 @@ export function MessageComposer({
     ta.style.height = Math.min(ta.scrollHeight, 160) + "px";
   }, [value]);
 
-  const submit = () => {
+  const submit = async () => {
     const trimmed = value.trim();
     if (!trimmed && !imagePreview) return;
-    if (editing) {
-      editMessage(editing.id, trimmed);
-      onCancelEdit?.();
-    } else {
-      sendMessage(conversationId, {
-        content: trimmed,
-        attachments: imagePreview ? [{ kind: "image", url: imagePreview }] : undefined,
-        replyToId: replyTo?.id,
-      });
-      onCancelReply?.();
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      if (editing) {
+        editMessage(editing.id, trimmed);
+        onCancelEdit?.();
+      } else {
+        await sendMessage(conversationId, {
+          content: trimmed,
+          attachments: imagePreview ? [{ kind: "image", url: imagePreview }] : undefined,
+          replyToId: replyTo?.id,
+        });
+        onCancelReply?.();
+      }
+      setValue("");
+      setImagePreview(null);
+      requestAnimationFrame(() => taRef.current?.focus());
+    } finally {
+      setIsSubmitting(false);
     }
-    setValue("");
-    setImagePreview(null);
-    requestAnimationFrame(() => taRef.current?.focus());
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -187,7 +195,7 @@ export function MessageComposer({
         <button
           type="submit"
           aria-label="Send"
-          disabled={!value.trim() && !imagePreview}
+          disabled={(!value.trim() && !imagePreview) || isSubmitting}
           className={cn(
             "grid h-10 w-10 place-items-center rounded-full transition ring-focus",
             (value.trim() || imagePreview)

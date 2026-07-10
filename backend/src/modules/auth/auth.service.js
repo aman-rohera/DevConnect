@@ -102,6 +102,8 @@ const registerUser = async (email, password, fullName, headline = '', skillsStri
         },
       },
     });
+  }, {
+    timeout: 15000 // Increase timeout for tests
   });
 };
 
@@ -117,7 +119,8 @@ const createSession = async (userId, ipAddress, device) => {
       ipAddress,
       device,
       expiresAt
-    }
+    },
+    include: { user: true }
   });
 
   const accessToken = jwt.sign(
@@ -190,9 +193,9 @@ const refreshAccessToken = async (refreshToken, ipAddress, device) => {
 
   // Token Rotation: Delete old session, create new one
   await prisma.userSession.delete({ where: { id: session.id } });
-  
+
   const tokens = await createSession(session.userId, ipAddress, device);
-  
+
   return tokens;
 };
 

@@ -17,6 +17,9 @@ import companyRoutes from './src/modules/company/company.routes.js';
 import jobRoutes from './src/modules/job/job.routes.js';
 import chatRoutes from './src/modules/chat/chat.routes.js';
 import notificationRoutes from './src/modules/notification/notification.routes.js';
+import searchRoutes from './src/modules/search/search.routes.js';
+import companyRequestRoutes from './src/modules/company-request/company-request.routes.js';
+import adminRoutes from './src/modules/admin/admin.routes.js';
 
 // Load environment variables
 dotenv.config();
@@ -30,7 +33,10 @@ initSocket(server);
 const PORT = process.env.PORT || 5000;
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: [process.env.FRONTEND_URL, 'http://localhost:5173', 'http://localhost:3000'].filter(Boolean),
+  credentials: true, // Allow cookies to be sent across origins
+}));
 app.use(express.json());
 app.use(cookieParser());
 
@@ -44,6 +50,9 @@ app.use('/api/companies', companyRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/search', searchRoutes);
+app.use('/api/company-requests', companyRequestRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Basic Health Check Route
 app.get('/api/health', (req, res) => {

@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Home, Bell, Users, User as UserIcon, Settings,
-  Search, Plus, LogOut, Sparkles, MessageSquare, Briefcase,
+  Search, Plus, LogOut, Sparkles, MessageSquare, Briefcase, Building2, ShieldAlert
 } from "lucide-react";
 import { useAppData } from "@/lib/app-data";
 import { useChatUnread } from "@/lib/chat-data";
@@ -100,6 +100,14 @@ export function AppShell({ children }: { children: ReactNode }) {
               <DropdownMenuItem onClick={() => navigate("/settings")} className="cursor-pointer">
                 <Settings className="mr-2 h-4 w-4" /> Settings
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate("/companies/create")} className="cursor-pointer">
+                <Building2 className="mr-2 h-4 w-4" /> Create Company
+              </DropdownMenuItem>
+              {authUser?.role === "ADMIN" && (
+                <DropdownMenuItem onClick={() => navigate("/admin")} className="cursor-pointer font-semibold text-primary">
+                  <ShieldAlert className="mr-2 h-4 w-4" /> Admin Panel
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={logout} className="cursor-pointer text-destructive">
                 <LogOut className="mr-2 h-4 w-4" /> Sign out

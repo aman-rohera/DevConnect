@@ -5,6 +5,7 @@ import { UserCard } from "@/components/UserCard";
 import { Search, X } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
 import { EmptyState } from "@/components/ui/empty-state";
+import { api } from "@/services/api";
 
 const recent = ["react hooks", "rust async", "postgres index", "@sarah"];
 const skills = ["React", "TypeScript", "Rust", "Go", "Swift", "Python", "PostgreSQL", "Kubernetes", "Design"];
@@ -12,24 +13,39 @@ const skills = ["React", "TypeScript", "Rust", "Go", "Swift", "Python", "Postgre
 export const ExplorePage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const q = searchParams.get("q") || "";
-  
   const [query, setQuery] = useState(q);
-  const { users, posts, currentUser } = useAppData();
+  const { posts } = useAppData();
 
   useEffect(() => {
     setQuery(q);
   }, [q]);
 
-  const filteredUsers = useMemo(() => {
-    if (!query) return [];
-    const s = query.toLowerCase().replace(/^#/, "");
-    return users.filter((u) =>
-      u.id !== currentUser.id &&
-      (u.name.toLowerCase().includes(s) ||
-       u.username.toLowerCase().includes(s) ||
-       u.skills.some((k) => k.toLowerCase().includes(s)))
-    );
-  }, [query, users, currentUser.id]);
+  const [realUsers, setRealUsers] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+
+  useEffect(() => {
+    if (!query.trim()) {
+      setRealUsers([]);
+      return;
+    }
+    
+    const fetchSearch = async () => {
+      setIsSearching(true);
+      try {
+        const res = await api.get<any>(`/search/users?q=${encodeURIComponent(query)}`);
+        if (res.success && res.data) {
+          setRealUsers(res.data.users);
+        }
+      } catch (err) {
+        console.error("Search failed:", err);
+      } finally {
+        setIsSearching(false);
+      }
+    };
+
+    const timer = setTimeout(fetchSearch, 300);
+    return () => clearTimeout(timer);
+  }, [query]);
 
   const filteredPosts = useMemo(() => {
     if (!query) return [];
@@ -106,13 +122,13 @@ export const ExplorePage = () => {
         <div className="space-y-6">
           <section>
             <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              People ({filteredUsers.length})
+              People {isSearching ? "..." : `(${realUsers.length})`}
             </h2>
-            {filteredUsers.length === 0 ? (
+            {!isSearching && realUsers.length === 0 ? (
               <EmptyState icon={Search} title="No people found" description="Try a different name, handle, or skill." />
             ) : (
               <div className="grid gap-3 sm:grid-cols-2">
-                {filteredUsers.map((u) => <UserCard key={u.id} user={u} />)}
+                {realUsers.map((u) => <UserCard key={u.id} user={u} />)}
               </div>
             )}
           </section>

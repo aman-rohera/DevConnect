@@ -10,10 +10,12 @@ interface RequestOptions extends RequestInit {
 
 export class ApiError extends Error {
   status: number;
-  constructor(message: string, status: number) {
+  errors?: any[];
+  constructor(message: string, status: number, errors?: any[]) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
+    this.errors = errors;
   }
 }
 
@@ -53,7 +55,7 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
   }
 
   if (!response.ok) {
-    throw new ApiError(data.message || 'Something went wrong', response.status);
+    throw new ApiError(data.message || 'Something went wrong', response.status, data.errors);
   }
 
   return data as T;

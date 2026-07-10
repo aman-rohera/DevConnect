@@ -18,6 +18,7 @@ const getUserProfile = async (userId) => {
           website: true,
           avatarUrl: true,
           coverUrl: true,
+          certificates: true
         }
       },
       education: true,
@@ -39,9 +40,9 @@ const getUserProfile = async (userId) => {
 
   // Flatten the skills array so it returns simple string array like ["React.js", "Node.js"]
   const formattedSkills = user.skills ? user.skills.map(s => s.skill.name) : [];
-  
+
   // Format response to maintain backward compatibility or align with expected format
-  return { 
+  return {
     id: user.id,
     email: user.email,
     fullName: user.fullName,
@@ -54,19 +55,24 @@ const getUserProfile = async (userId) => {
     avatarUrl: user.profile?.avatarUrl || null,
     coverUrl: user.profile?.coverUrl || null,
     education: user.education || [],
-    experience: user.experiences || [],
+    experience: user.experiences ? user.experiences.map(exp => ({
+      ...exp,
+      company: exp.companyName,
+      role: exp.title
+    })) : [],
     projects: user.projects || [],
+    certificates: user.profile?.certificates || [],
     skills: formattedSkills
   };
 };
 
 const updateUserProfile = async (userId, data) => {
-  const { headline, bio, location, website, avatarUrl, coverUrl, skills, education, experience } = data;
+  const { headline, bio, location, website, avatarUrl, coverUrl, skills, education, experience, projects, certificates } = data;
 
   // 1. Update basic profile info
   await prisma.user.update({
     where: { id: userId },
-    data: { 
+    data: {
       profile: {
         upsert: {
           create: {
@@ -117,13 +123,13 @@ const updateUserProfile = async (userId, data) => {
     }
   }
 
-const parseDate = (val, fallback = null) => {
-  if (!val || val === 'Present' || val === 'present') return fallback;
-  const parsed = new Date(val);
-  return isNaN(parsed.getTime()) ? fallback : parsed;
-};
+  const parseDate = (val, fallback = null) => {
+    if (!val || val === 'Present' || val === 'present') return fallback;
+    const parsed = new Date(val);
+    return isNaN(parsed.getTime()) ? fallback : parsed;
+  };
 
-// 3. If education is provided, update education table
+  // 3. If education is provided, update education table
   if (education && Array.isArray(education)) {
     await prisma.education.deleteMany({
       where: { userId }
@@ -166,6 +172,49 @@ const parseDate = (val, fallback = null) => {
           description: exp.description || ''
         }
       });
+    }
+  }
+
+  // 5. Update projects table
+  if (projects && Array.isArray(projects)) {
+    await prisma.project.deleteMany({
+      where: { userId }
+    });
+
+    for (const proj of projects) {
+      await prisma.project.create({
+        data: {
+          userId,
+          title: proj.title,
+          description: proj.description || '',
+          projectUrl: proj.projectUrl || '',
+          repoUrl: proj.repoUrl || ''
+        }
+      });
+    }
+  }
+
+  // 6. Update certificates table
+  if (certificates && Array.isArray(certificates)) {
+    const profileRecord = await prisma.profile.findUnique({ where: { userId } });
+    if (profileRecord) {
+      await prisma.certificate.deleteMany({
+        where: { profileId: profileRecord.id }
+      });
+
+      for (const cert of certificates) {
+        await prisma.certificate.create({
+          data: {
+            profileId: profileRecord.id,
+            name: cert.name,
+            issuer: cert.issuer,
+            issueDate: parseDate(cert.issueDate, new Date()),
+            expiryDate: parseDate(cert.expiryDate, null),
+            credentialId: cert.credentialId || '',
+            url: cert.url || ''
+          }
+        });
+      }
     }
   }
 

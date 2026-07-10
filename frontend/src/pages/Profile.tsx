@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/services/api";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -25,6 +25,8 @@ export const Profile = () => {
   const [loading, setLoading] = useState(true);
   const [connectionStatus, setConnectionStatus] = useState<string>("Connect");
   const [connecting, setConnecting] = useState(false);
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchProfile();
@@ -110,6 +112,23 @@ export const Profile = () => {
     }
   };
 
+  const handleMessage = async () => {
+    if (!id) return;
+    
+    try {
+      // Create or get conversation from backend
+      const res = await api.post<any>("/chat/conversations", { targetUserId: id, title: "Chat" }, { token });
+      if (res.success && res.conversation) {
+        navigate(`/messages?c=${res.conversation.id}`);
+      } else {
+        toast.error("Failed to start conversation");
+      }
+    } catch (err) {
+      console.error("Failed to sync conversation with backend", err);
+      toast.error("Error connecting to chat service");
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-[400px] flex-col items-center justify-center gap-3 text-muted-foreground">
@@ -161,7 +180,7 @@ export const Profile = () => {
                 </Button>
               ) : (
                 <>
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" onClick={handleMessage}>
                     <MessageCircle className="mr-1.5 h-3.5 w-3.5" /> Message
                   </Button>
                   <Button
