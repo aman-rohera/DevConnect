@@ -10,7 +10,6 @@ const syncUserToNeo4j = async (userId) => {
     where: { id: userId },
     include: {
       profile: true,
-      education: true,
       skills: {
         include: { skill: true }
       }

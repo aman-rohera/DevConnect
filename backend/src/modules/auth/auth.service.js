@@ -9,6 +9,7 @@ dotenv.config();
 
 const formatUserResponse = (user) => {
   if (!user) return null;
+  const skillsList = user.skills ? user.skills.map((s) => s.skill.name) : [];
   return {
     id: user.id,
     email: user.email,
@@ -21,8 +22,9 @@ const formatUserResponse = (user) => {
       website: user.profile.website || '',
       avatar_url: user.profile.avatarUrl || '',
       cover_url: user.profile.coverUrl || '',
+      skills: skillsList
     } : null,
-    skills: user.skills ? user.skills.map((s) => s.skill.name) : [],
+    skills: skillsList,
     updated_at: user.updatedAt ? user.updatedAt.toISOString() : new Date().toISOString(),
   };
 };

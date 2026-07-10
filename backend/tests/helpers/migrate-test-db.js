@@ -26,7 +26,7 @@ const runCommand = (command, args) => {
 
 const run = async () => {
   console.log('Pushing Prisma schema to test database...');
-  await runCommand('npx', ['prisma', 'db', 'push', '--accept-data-loss']);
+  await runCommand('npx', ['prisma', 'db', 'push', '--force-reset']);
 };
 
 run().catch(err => {

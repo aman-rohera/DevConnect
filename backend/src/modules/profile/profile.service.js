@@ -61,7 +61,7 @@ const getUserProfile = async (userId) => {
 };
 
 const updateUserProfile = async (userId, data) => {
-  const { headline, bio, location, website, avatarUrl, coverUrl, skills } = data;
+  const { headline, bio, location, website, avatarUrl, coverUrl, skills, education, experience } = data;
 
   // 1. Update basic profile info
   await prisma.user.update({
@@ -117,10 +117,59 @@ const updateUserProfile = async (userId, data) => {
     }
   }
 
-  // Note: Education, Experience, and Projects should be managed through their respective specific endpoints
-  // in a properly normalized architecture, instead of a massive monolith update. We skip bulk replacing them here.
+const parseDate = (val, fallback = null) => {
+  if (!val || val === 'Present' || val === 'present') return fallback;
+  const parsed = new Date(val);
+  return isNaN(parsed.getTime()) ? fallback : parsed;
+};
 
-  // 4. Sync profile to Neo4j for recommendations
+// 3. If education is provided, update education table
+  if (education && Array.isArray(education)) {
+    await prisma.education.deleteMany({
+      where: { userId }
+    });
+
+    for (const edu of education) {
+      await prisma.education.create({
+        data: {
+          userId,
+          school: edu.school,
+          degree: edu.degree || '',
+          fieldOfStudy: edu.fieldOfStudy || '',
+          startDate: parseDate(edu.startDate, edu.startYear ? new Date(`${edu.startYear}-01-01`) : new Date()),
+          endDate: parseDate(edu.endDate, edu.endYear ? new Date(`${edu.endYear}-01-01`) : null),
+          grade: edu.grade || '',
+          activities: edu.activities || '',
+          description: edu.description || ''
+        }
+      });
+    }
+  }
+
+  // 4. If experience is provided, update experience table
+  if (experience && Array.isArray(experience)) {
+    await prisma.experience.deleteMany({
+      where: { userId }
+    });
+
+    for (const exp of experience) {
+      await prisma.experience.create({
+        data: {
+          userId,
+          companyName: exp.company || exp.companyName,
+          title: exp.role || exp.title,
+          location: exp.location || '',
+          type: exp.type || 'ON_SITE',
+          isCurrent: exp.isCurrent || false,
+          startDate: parseDate(exp.startDate, new Date()),
+          endDate: parseDate(exp.endDate, null),
+          description: exp.description || ''
+        }
+      });
+    }
+  }
+
+  // 5. Sync profile to Neo4j for recommendations
   try {
     await syncUserToNeo4j(userId);
   } catch (err) {

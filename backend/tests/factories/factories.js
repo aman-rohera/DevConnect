@@ -41,6 +41,12 @@ export const buildUser = (overrides = {}) => {
   };
 };
 
+const parseDate = (val, fallback = null) => {
+  if (!val || val === 'Present' || val === 'present') return fallback;
+  const parsed = new Date(val);
+  return isNaN(parsed.getTime()) ? fallback : parsed;
+};
+
 export const createUser = async (overrides = {}) => {
   const data = buildUser(overrides);
   const salt = await bcrypt.genSalt(10);
@@ -51,12 +57,40 @@ export const createUser = async (overrides = {}) => {
       email: data.email,
       passwordHash,
       fullName: data.fullName,
-      headline: data.headline,
-      bio: data.bio,
-      avatarUrl: data.avatarUrl,
-      education: data.education,
-      experience: data.experience,
-      certificates: data.certificates
+      role: data.role || 'USER',
+      profile: {
+        create: {
+          headline: data.headline || '',
+          bio: data.bio || '',
+          avatarUrl: data.avatarUrl || ''
+        }
+      },
+      education: {
+        create: (data.education || []).map(edu => ({
+          school: edu.school,
+          degree: edu.degree || '',
+          fieldOfStudy: edu.fieldOfStudy || '',
+          startDate: parseDate(edu.startDate, edu.startYear ? new Date(`${edu.startYear}-01-01`) : new Date()),
+          endDate: parseDate(edu.endDate, edu.endYear ? new Date(`${edu.endYear}-01-01`) : null)
+        }))
+      },
+      experiences: {
+        create: (data.experience || []).map(exp => ({
+          companyName: exp.company || exp.companyName,
+          title: exp.role || exp.title,
+          location: exp.location || '',
+          type: exp.type || 'ON_SITE',
+          isCurrent: exp.isCurrent || false,
+          startDate: parseDate(exp.startDate, new Date()),
+          endDate: parseDate(exp.endDate, null),
+          description: exp.description || ''
+        }))
+      }
+    },
+    include: {
+      profile: true,
+      education: true,
+      experiences: true
     }
   });
 

@@ -27,11 +27,15 @@ const register = async (req, res, next) => {
   const { email, password, fullName, headline, skills } = req.body;
 
   try {
-    await authService.registerUser(email, password, fullName, headline, skills);
+    const user = await authService.registerUser(email, password, fullName, headline, skills);
+    const formattedUser = authService.formatUserResponse(user);
     
     return res.status(201).json({
       success: true,
-      message: 'Registration successful. Please login to continue.'
+      message: 'Registration successful. Please login to continue.',
+      data: {
+        user: formattedUser
+      }
     });
   } catch (error) {
     next(error);
@@ -55,7 +59,11 @@ const login = async (req, res, next) => {
       success: true,
       message: 'Login successful',
       data: {
-        user: formattedUser
+        user: formattedUser,
+        session: {
+          access_token: tokens.accessToken,
+          refresh_token: tokens.refreshToken
+        }
       }
     });
   } catch (error) {

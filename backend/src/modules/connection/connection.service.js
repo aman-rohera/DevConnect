@@ -58,11 +58,11 @@ const respondToRequest = async (connectionId, receiverId, action) => {
   }
 
   if (action === 'REJECT') {
-    // Delete the pending connection instead of updating it to 'REJECTED' since it is not in the Enum
-    const deleted = await prisma.connection.delete({
-      where: { id: connectionId }
+    const updated = await prisma.connection.update({
+      where: { id: connectionId },
+      data: { status: 'REJECTED' }
     });
-    return deleted;
+    return updated;
   }
 
   const updated = await prisma.connection.update({
@@ -94,8 +94,7 @@ const getConnections = async (userId) => {
       OR: [
         { senderId: userId },
         { receiverId: userId }
-      ],
-      status: 'ACCEPTED'
+      ]
     },
     include: {
       sender: {

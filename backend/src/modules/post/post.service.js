@@ -1,16 +1,11 @@
 import prisma from '../../config/db.js';
 
-const createPost = async (userId, content, mediaUrls = []) => {
+const createPost = async (userId, content, imageUrl = null) => {
   return prisma.post.create({
     data: {
       userId,
       content,
-      media: {
-        create: mediaUrls.map(url => ({
-          url,
-          type: 'IMAGE' // Defaulting to IMAGE for now, can be updated later
-        }))
-      }
+      imageUrl
     },
     include: {
       user: {
@@ -24,8 +19,7 @@ const createPost = async (userId, content, mediaUrls = []) => {
             }
           }
         }
-      },
-      media: true
+      }
     }
   });
 };

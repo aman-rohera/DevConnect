@@ -16,6 +16,7 @@ enum UserRole {
   USER
   ADMIN
   MODERATOR
+  RECRUITER
 }
 
 enum Visibility {
@@ -58,6 +59,7 @@ enum ApplicationStatus {
 enum ConnectionStatus {
   PENDING
   ACCEPTED
+  REJECTED
 }
 
 enum NotificationType {
@@ -161,7 +163,7 @@ model User {
   // Jobs
   applications Application[]
   savedJobs    SavedJob[]
-  jobsCreated  Job[]         @relation("RecruiterJobs")
+  recruiter    Recruiter?
 
   // Messaging
   conversations ConversationMember[]
@@ -179,6 +181,7 @@ model User {
   // Admin
   auditLogs      AuditLog[]
   reportsCreated Report[]   @relation("Reporter")
+  followedCompanies CompanyFollower[]
 
   @@map("users")
 }
@@ -193,6 +196,7 @@ model Profile {
   website   String?
   avatarUrl String? @map("avatar_url")
   coverUrl  String? @map("cover_url")
+  certificates Certificate[]
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -281,12 +285,10 @@ model Project {
   id          String    @id @default(uuid()) @db.Uuid
   userId      String    @db.Uuid
   title       String
-  description String?
-  url         String?
-  githubUrl   String?   @map("github_url")
-  liveUrl     String?   @map("live_url")
-  startDate   DateTime? @map("start_date") @db.Date
-  endDate     DateTime? @map("end_date") @db.Date
+  description String
+  projectUrl  String?   @default("") @map("project_url")
+  repoUrl     String?   @default("") @map("repo_url")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -311,10 +313,16 @@ model Company {
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
+  employeeCount String?  @map("employee_count")
+  foundedYear   Int?     @map("founded_year")
+
   members     CompanyMember[]
   jobs        Job[]
   posts       Post[]
   experiences Experience[]
+  recruiters  Recruiter[]
+  departments Department[]
+  followers   CompanyFollower[]
 
   @@map("companies")
 }
@@ -371,6 +379,7 @@ model Post {
   userId     String     @db.Uuid
   companyId  String?    @db.Uuid
   content    String
+  imageUrl   String?    @map("image_url")
   visibility Visibility @default(PUBLIC)
   createdAt  DateTime   @default(now()) @map("created_at") @db.Timestamptz
   updatedAt  DateTime   @updatedAt @map("updated_at") @db.Timestamptz
@@ -460,7 +469,7 @@ model Job {
   updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz
 
   company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  recruiter User    @relation("RecruiterJobs", fields: [recruiterId], references: [id], onDelete: Cascade)
+  recruiter Recruiter @relation(fields: [recruiterId], references: [id], onDelete: Cascade)
 
   skills       JobSkill[]
   applications Application[]
@@ -573,6 +582,7 @@ model Message {
   conversationId String    @db.Uuid
   senderId       String    @db.Uuid
   content        String
+  type           String?   @default("TEXT")
   replyToId      String?   @db.Uuid
   isEdited       Boolean   @default(false) @map("is_edited")
   deletedAt      DateTime? @db.Timestamptz
@@ -687,4 +697,62 @@ model Report {
   @@index([reporterId])
   @@index([status])
   @@map("reports")
+}
+
+model Recruiter {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @unique @map("user_id") @db.Uuid
+  companyId String   @map("company_id") @db.Uuid
+  title     String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  jobs    Job[]
+
+  @@index([userId])
+  @@index([companyId])
+  @@map("recruiters")
+}
+
+model Department {
+  id        String   @id @default(uuid()) @db.Uuid
+  companyId String   @map("company_id") @db.Uuid
+  name      String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("departments")
+}
+
+model CompanyFollower {
+  companyId String   @map("company_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([companyId, userId])
+  @@map("company_followers")
+}
+
+model Certificate {
+  id           String    @id @default(uuid()) @db.Uuid
+  profileId    String    @map("profile_id") @db.Uuid
+  name         String
+  issuer       String
+  issueDate    DateTime? @map("issue_date") @db.Timestamptz
+  expiryDate   DateTime? @map("expiry_date") @db.Timestamptz
+  credentialId String?   @map("credential_id")
+  url          String?
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@map("certificates")
 }

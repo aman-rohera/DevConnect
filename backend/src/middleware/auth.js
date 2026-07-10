@@ -23,7 +23,7 @@ const authenticateToken = (req, res, next) => {
     req.user = decoded; // Contains id, email, role
     next();
   } catch (error) {
-    return res.status(401).json({
+    return res.status(403).json({
       success: false,
       message: 'Invalid or expired authentication token.'
     });
