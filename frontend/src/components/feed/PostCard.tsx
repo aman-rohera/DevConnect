@@ -61,7 +61,7 @@ export function PostCard({ post }: { post: any }) {
   const handleLike = async () => {
     // Optimistic UI updates
     setLiked(!liked);
-    setLikesCount((prev) => prev + (liked ? -1 : 1));
+    setLikesCount((prev: number) => prev + (liked ? -1 : 1));
 
     try {
       const res = await api.post<any>(`/posts/${post.id}/like`, {});
@@ -142,8 +142,8 @@ export function PostCard({ post }: { post: any }) {
       });
       if (res.success && res.comment) {
         setNewComment("");
-        setComments((prev) => [res.comment, ...prev]);
-        setCommentsCount((prev) => prev + 1);
+        setComments((prev: any[]) => [res.comment, ...prev]);
+        setCommentsCount((prev: number) => prev + 1);
       }
     } catch (err) {
       console.error("Failed to post comment", err);
@@ -165,9 +165,9 @@ export function PostCard({ post }: { post: any }) {
       if (res.success && res.comment) {
         setReplyContent("");
         setReplyingToId(null);
-        setCommentsCount((prev) => prev + 1);
+        setCommentsCount((prev: number) => prev + 1);
         // Insert reply locally into comment tree
-        setComments((prev) => {
+        setComments((prev: any[]) => {
           const insertReply = (list: any[]): any[] => {
             return list.map((c) => {
               if (c.id === parentCommentId) {
