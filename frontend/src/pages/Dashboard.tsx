@@ -120,7 +120,7 @@ export const Dashboard = () => {
             </div>
           ) : (
             posts.map((p, i) => (
-              <div key={p.id} className="animate-slide-up" style={{ animationDelay: `${i * 40}ms` }}>
+              <div key={p.repostedBy ? `${p.id}-repost-${p.repostedBy.id}` : p.id} className="animate-slide-up" style={{ animationDelay: `${i * 40}ms` }}>
                 <PostCard post={p} />
               </div>
             ))

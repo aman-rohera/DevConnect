@@ -247,7 +247,7 @@ export const Profile = () => {
           {userPosts.length === 0 ? (
             <EmptyState icon={FileText} title="No posts yet" description="When they post updates, they will show up here." />
           ) : (
-            userPosts.map((p) => <PostCard key={p.id} post={p} />)
+            userPosts.map((p) => <PostCard key={p.repostedBy ? `${p.id}-repost-${p.repostedBy.id}` : p.id} post={p} />)
           )}
         </TabsContent>
 

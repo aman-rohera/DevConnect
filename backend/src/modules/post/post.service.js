@@ -25,7 +25,7 @@ const createPost = async (userId, content, imageUrl = null) => {
 };
 
 const getFeedPosts = async (currentUserId = null) => {
-  // Fetch the latest 50 posts with counts and check if current user liked it
+  // 1. Fetch original posts
   const posts = await prisma.post.findMany({
     orderBy: {
       createdAt: 'desc'
@@ -48,6 +48,9 @@ const getFeedPosts = async (currentUserId = null) => {
       likes: currentUserId ? {
         where: { userId: currentUserId }
       } : false,
+      shares: currentUserId ? {
+        where: { userId: currentUserId }
+      } : false,
       _count: {
         select: {
           likes: true,
@@ -58,17 +61,93 @@ const getFeedPosts = async (currentUserId = null) => {
     }
   });
 
-  return posts.map(post => {
+  const originalItems = posts.map(post => {
     const liked = currentUserId ? post.likes.length > 0 : false;
-    const { likes, _count, ...rest } = post;
+    const shared = currentUserId ? post.shares.length > 0 : false;
+    const { likes, shares, _count, ...rest } = post;
     return {
       ...rest,
       liked,
+      shared,
       likes: _count.likes,
       comments: _count.comments,
-      shares: _count.shares
+      shares: _count.shares,
+      feedTime: post.createdAt
     };
   });
+
+  // 2. Fetch shared/reposted posts
+  const shares = await prisma.share.findMany({
+    orderBy: {
+      createdAt: 'desc'
+    },
+    take: 50,
+    include: {
+      user: {
+        select: {
+          id: true,
+          fullName: true
+        }
+      },
+      post: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              fullName: true,
+              profile: {
+                select: {
+                  headline: true,
+                  avatarUrl: true
+                }
+              }
+            }
+          },
+          media: true,
+          likes: currentUserId ? {
+            where: { userId: currentUserId }
+          } : false,
+          shares: currentUserId ? {
+            where: { userId: currentUserId }
+          } : false,
+          _count: {
+            select: {
+              likes: true,
+              comments: true,
+              shares: true
+            }
+          }
+        }
+      }
+    }
+  });
+
+  const sharedItems = shares.map(s => {
+    const post = s.post;
+    const liked = currentUserId ? post.likes.length > 0 : false;
+    const shared = currentUserId ? post.shares.length > 0 : false;
+    const { likes, shares: sharesRel, _count, ...rest } = post;
+    return {
+      ...rest,
+      liked,
+      shared,
+      likes: _count.likes,
+      comments: _count.comments,
+      shares: _count.shares,
+      repostedBy: {
+        id: s.user.id,
+        fullName: s.user.fullName
+      },
+      feedTime: s.createdAt
+    };
+  });
+
+  // Combine and sort by feedTime desc
+  const combined = [...originalItems, ...sharedItems].sort((a, b) => {
+    return new Date(b.feedTime).getTime() - new Date(a.feedTime).getTime();
+  });
+
+  return combined.slice(0, 50);
 };
 
 const togglePostLike = async (userId, postId) => {
@@ -98,15 +177,25 @@ const togglePostLike = async (userId, postId) => {
 };
 
 const logPostShare = async (userId, postId) => {
-  await prisma.share.create({
-    data: { postId, userId }
+  const existing = await prisma.share.findFirst({
+    where: { postId, userId }
   });
+
+  if (existing) {
+    await prisma.share.delete({
+      where: { id: existing.id }
+    });
+  } else {
+    await prisma.share.create({
+      data: { postId, userId }
+    });
+  }
 
   const count = await prisma.share.count({
     where: { postId }
   });
 
-  return { sharesCount: count };
+  return { shared: !existing, sharesCount: count };
 };
 
 const addComment = async (userId, postId, content, parentCommentId = null) => {

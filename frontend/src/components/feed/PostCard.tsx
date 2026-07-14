@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAppData } from "@/lib/app-data";
 import { useAuth } from "@/context/AuthContext";
@@ -51,7 +51,30 @@ export function PostCard({ post }: { post: any }) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDeleted, setIsDeleted] = useState(false);
 
+  // Repost & Send states
+  const [shared, setShared] = useState(!!post.shared);
+  const [connections, setConnections] = useState<any[]>([]);
+  const [sendingToId, setSendingToId] = useState<string | null>(null);
+
   const isOwner = currentUser?.id === author?.id;
+
+  useEffect(() => {
+    if (currentUser) {
+      fetchConnections();
+    }
+  }, [currentUser]);
+
+  const fetchConnections = async () => {
+    try {
+      const res = await api.get<any>("/connections");
+      if (res.success && res.connections) {
+        const accepted = res.connections.filter((c: any) => c.status === "ACCEPTED");
+        setConnections(accepted);
+      }
+    } catch (err) {
+      console.error("Failed to load connections for send menu", err);
+    }
+  };
 
   if (isDeleted) return null;
   if (!author) return null;
@@ -79,15 +102,68 @@ export function PostCard({ post }: { post: any }) {
   };
 
   const handleShare = async () => {
+    // Optimistic UI updates
+    setShared(!shared);
+    setSharesCount((prev: number) => prev + (shared ? -1 : 1));
+
     try {
       const res = await api.post<any>(`/posts/${post.id}/share`, {});
       if (res.success) {
+        setShared(res.shared);
         setSharesCount(res.sharesCount);
-        toast.success("Post shared successfully!");
+        if (res.shared) {
+          toast.success("Post reposted successfully!");
+        } else {
+          toast.success("Repost removed.");
+        }
       }
     } catch (err) {
       console.error("Failed to share post", err);
+      // Revert optimistic updates
+      setShared(shared);
+      setSharesCount(sharesCount);
       toast.error("Failed to register share.");
+    }
+  };
+
+  const handleCopyLink = () => {
+    const link = `${window.location.origin}/posts/${post.id}`;
+    navigator.clipboard.writeText(link);
+    toast.success("Post link copied to clipboard!");
+  };
+
+  const handleSendToConnection = async (contact: any) => {
+    setSendingToId(contact.id);
+    try {
+      // 1. Create or get conversation
+      const convRes = await api.post<any>("/chat/conversations", {
+        targetUserId: contact.id
+      });
+      
+      if (convRes.success && convRes.data?.id) {
+        const conversationId = convRes.data.id;
+        // 2. Send the message containing the post link
+        const postLink = `${window.location.origin}/posts/${post.id}`;
+        const msgContent = `Check out this post: ${postLink}`;
+        
+        const msgRes = await api.post<any>("/chat/messages", {
+          conversationId,
+          content: msgContent
+        });
+        
+        if (msgRes.success) {
+          toast.success(`Post shared with ${contact.fullName}!`);
+        } else {
+          toast.error("Failed to send message.");
+        }
+      } else {
+        toast.error("Failed to open conversation.");
+      }
+    } catch (err) {
+      console.error("Error sharing post via message", err);
+      toast.error("Failed to share post via message.");
+    } finally {
+      setSendingToId(null);
     }
   };
 
@@ -192,6 +268,12 @@ export function PostCard({ post }: { post: any }) {
   return (
     <article className="group relative rounded-xl border border-border bg-card transition hover:border-border-strong">
       <div className="p-4 sm:p-5">
+        {post.repostedBy && (
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground mb-2.5 px-0.5">
+            <Repeat2 className="h-3.5 w-3.5 text-emerald-400" />
+            <span>{post.repostedBy.fullName} reposted</span>
+          </div>
+        )}
         <header className="flex items-start gap-3">
           <Link to={`/profile/${author.id}`} className="shrink-0">
             <Avatar className="h-10 w-10 border border-border">
@@ -271,8 +353,54 @@ export function PostCard({ post }: { post: any }) {
         <footer className="mt-4 flex items-center justify-between gap-1 text-muted-foreground border-t border-border/40 pt-3">
           <Action onClick={handleLike} active={liked} activeClass="text-red-400" icon={<Heart className={cn("h-4 w-4", liked && "fill-current")} />} count={likesCount} label="Like" />
           <Action onClick={handleToggleComments} active={showComments} activeClass="text-primary" icon={<MessageCircle className="h-4 w-4" />} count={commentsCount} label="Comment" />
-          <Action onClick={handleShare} icon={<Repeat2 className="h-4 w-4" />} count={sharesCount} label="Share" activeClass="text-emerald-400" />
-          <Action icon={<Share2 className="h-4 w-4" />} label="Send" />
+          <Action onClick={handleShare} active={shared} activeClass="text-emerald-400" icon={<Repeat2 className={cn("h-4 w-4", shared && "fill-current")} />} count={sharesCount} label="Share" />
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs transition hover:bg-accent hover:text-foreground text-muted-foreground">
+                <Share2 className="h-4 w-4" />
+                <span>Send</span>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="center" className="w-56 p-1">
+              <DropdownMenuItem className="cursor-pointer font-medium" onSelect={handleCopyLink}>
+                Copy link to post
+              </DropdownMenuItem>
+              
+              {connections.length > 0 && (
+                <>
+                  <div className="h-px bg-border my-1" />
+                  <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                    Send to Connections
+                  </div>
+                  <div className="max-h-40 overflow-y-auto">
+                    {connections.map((conn: any) => {
+                      const contact = conn.senderId === currentUser?.id ? conn.receiver : conn.sender;
+                      const isSending = sendingToId === contact.id;
+                      return (
+                        <DropdownMenuItem
+                          key={contact.id}
+                          className="cursor-pointer flex items-center justify-between text-xs py-2"
+                          onSelect={() => handleSendToConnection(contact)}
+                          disabled={isSending}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Avatar className="h-5 w-5 border border-border shrink-0">
+                              <AvatarImage src={contact.profile?.avatarUrl || contact.avatarUrl || ""} />
+                              <AvatarFallback className="text-[8px]">{contact.fullName[0]}</AvatarFallback>
+                            </Avatar>
+                            <span className="truncate">{contact.fullName}</span>
+                          </div>
+                          {isSending && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+                        </DropdownMenuItem>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <Action onClick={() => toggleSave(post.id)} active={!!post.saved} activeClass="text-primary" icon={<Bookmark className={cn("h-4 w-4", post.saved && "fill-current")} />} label="Save" />
         </footer>
 
