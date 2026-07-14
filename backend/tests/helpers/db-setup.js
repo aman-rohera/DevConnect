@@ -3,7 +3,7 @@ import { getNeo4jSession } from '../../src/config/neo4j.js';
 
 export const cleanupDatabase = async () => {
   // Truncate Postgres tables in dependency order
-  const tables = ['user_skills', 'skills', 'projects', 'connections', 'posts', 'users'];
+  const tables = ['user_skills', 'skills', 'projects', 'connections', 'shares', 'likes', 'comments', 'posts', 'users'];
   for (const table of tables) {
     try {
       await prisma.$executeRawUnsafe(`TRUNCATE TABLE "${table}" CASCADE;`);

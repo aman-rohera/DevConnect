@@ -190,6 +190,7 @@ model User {
   followedCompanies CompanyFollower[]
   companyRequests CompanyCreationRequest[] @relation("CompanyRequester")
   reviewedRequests CompanyCreationRequest[] @relation("CompanyReviewer")
+  shares           Share[]
 
   isSuspended  Boolean  @default(false) @map("is_suspended")
 
@@ -401,6 +402,7 @@ model Post {
   media    PostMedia[]
   comments Comment[]
   likes    Like[]
+  shares   Share[]
 
   @@index([userId])
   @@index([companyId])
@@ -798,4 +800,16 @@ model CompanyCreationRequest {
   @@index([requesterId])
   @@index([status])
   @@map("company_creation_requests")
+}
+
+model Share {
+  id        String   @id @default(uuid()) @db.Uuid
+  postId    String   @map("post_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("shares")
 }
