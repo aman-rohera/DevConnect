@@ -12,58 +12,17 @@ import {
   Plus, CheckCircle, Bookmark, BookmarkCheck, FileText, Send
 } from "lucide-react";
 import { toast } from "sonner";
-
-const initialJobs = [
-  {
-    id: "job1",
-    company: "Vercel",
-    logo: "https://api.dicebear.com/9.x/glass/svg?seed=vercel",
-    title: "Senior React Developer",
-    location: "Remote, US",
-    salary: "$140k - $170k",
-    type: "FULL_TIME",
-    employmentType: "REMOTE",
-    description: "We are looking for a Senior React Developer to join our core framework team. You will work on Next.js optimization, React Server Components integration, and building state-of-the-art deployment interfaces.",
-    skills: ["React", "Next.js", "TypeScript", "Tailwind CSS"],
-    createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: "job2",
-    company: "Supabase",
-    logo: "https://api.dicebear.com/9.x/glass/svg?seed=supabase",
-    title: "Backend Postgres Engineer",
-    location: "Hybrid, San Francisco",
-    salary: "$130k - $160k",
-    type: "FULL_TIME",
-    employmentType: "HYBRID",
-    description: "Join the team building the open-source Firebase alternative. You will optimize Postgres queries, write Go extension layers, and scale our database auto-pausing infrastructure.",
-    skills: ["PostgreSQL", "Go", "Docker", "Database Tuning"],
-    createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: "job3",
-    company: "Linear",
-    logo: "https://api.dicebear.com/9.x/glass/svg?seed=linear",
-    title: "Frontend UI Specialist",
-    location: "On-site, London",
-    salary: "£90k - £110k",
-    type: "FULL_TIME",
-    employmentType: "ON_SITE",
-    description: "Craft pixel-perfect, highly keyboard-navigable interfaces. You will collaborate with design leads to build animations, state syncing, and high-fidelity workspaces.",
-    skills: ["JavaScript", "TypeScript", "CSS Animations", "UI/UX"],
-    createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
-  }
-];
+import { api } from "@/services/api";
 
 export const JobsPage = () => {
   const [jobs, setJobs] = useState<any[]>([]);
   const [savedJobIds, setSavedJobIds] = useState<string[]>([]);
   const [applications, setApplications] = useState<any[]>([]);
-  
+
   const [searchQuery, setSearchQuery] = useState("");
   const [locationQuery, setLocationQuery] = useState("");
   const [selectedJob, setSelectedJob] = useState<any>(null);
-  
+
   // Dialog Open States
   const [postOpen, setPostOpen] = useState(false);
   const [applyOpen, setApplyOpen] = useState(false);
@@ -87,29 +46,28 @@ export const JobsPage = () => {
   });
 
   useEffect(() => {
-    // Load data from LocalStorage
-    const storedJobs = localStorage.getItem("dc_jobs");
-    if (storedJobs) {
-      setJobs(JSON.parse(storedJobs));
-    } else {
-      localStorage.setItem("dc_jobs", JSON.stringify(initialJobs));
-      setJobs(initialJobs);
-    }
-
-    const storedSaved = localStorage.getItem("dc_saved_jobs");
-    if (storedSaved) {
-      setSavedJobIds(JSON.parse(storedSaved));
-    }
-
-    const storedApps = localStorage.getItem("dc_applications");
-    if (storedApps) {
-      setApplications(JSON.parse(storedApps));
-    }
+    fetchJobsData();
   }, []);
 
-  const saveJobsToLocalStorage = (updatedJobs: any[]) => {
-    localStorage.setItem("dc_jobs", JSON.stringify(updatedJobs));
-    setJobs(updatedJobs);
+  const fetchJobsData = async () => {
+    try {
+      const [jobsRes, savedRes] = await Promise.all([
+        api.get<any>("/jobs"),
+        api.get<any>("/jobs/saved")
+      ]);
+
+      if (jobsRes.success && jobsRes.jobs) {
+        setJobs(jobsRes.jobs);
+      }
+
+      if (savedRes.success && savedRes.saved) {
+        setSavedJobIds(savedRes.saved.map((s: any) => s.jobId));
+      }
+
+      setApplications([]);
+    } catch (err) {
+      console.error("Failed to load jobs", err);
+    }
   };
 
   const handlePostJob = (e: React.FormEvent) => {
@@ -119,88 +77,84 @@ export const JobsPage = () => {
       return;
     }
 
-    const createdJob = {
-      id: "job_" + Date.now(),
+    const jobPayload = {
       title: newJob.title,
-      company: newJob.company,
-      logo: `https://api.dicebear.com/9.x/glass/svg?seed=${newJob.company.toLowerCase()}`,
+      companyId: undefined, // Backend expects this if linked to company
       location: newJob.location,
-      salary: newJob.salary || "Not Specified",
+      salaryRange: newJob.salary || "Not Specified",
       type: newJob.type,
       employmentType: newJob.employmentType,
       description: newJob.description,
-      skills: newJob.skills ? newJob.skills.split(",").map(s => s.trim()) : [],
-      createdAt: new Date().toISOString()
+      requirements: newJob.skills ? newJob.skills.split(",").map(s => s.trim()) : [],
     };
 
-    const updatedJobs = [createdJob, ...jobs];
-    saveJobsToLocalStorage(updatedJobs);
-    setNewJob({
-      title: "",
-      company: "",
-      location: "",
-      salary: "",
-      type: "FULL_TIME",
-      employmentType: "REMOTE",
-      description: "",
-      skills: ""
-    });
-    setPostOpen(false);
-    toast.success("Job posting created successfully!");
+    api.post<any>("/jobs", jobPayload)
+      .then(res => {
+        if (res.success && res.job) {
+          setJobs([res.job, ...jobs]);
+          toast.success("Job posting created successfully!");
+          setNewJob({
+            title: "",
+            company: "",
+            location: "",
+            salary: "",
+            type: "FULL_TIME",
+            employmentType: "REMOTE",
+            description: "",
+            skills: ""
+          });
+          setPostOpen(false);
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        toast.error("Failed to create job posting");
+      });
   };
 
-  const handleToggleSaveJob = (jobId: string) => {
-    let updatedSaved = [...savedJobIds];
-    if (savedJobIds.includes(jobId)) {
-      updatedSaved = updatedSaved.filter(id => id !== jobId);
-      toast.success("Job removed from saved list.");
-    } else {
-      updatedSaved.push(jobId);
-      toast.success("Job saved successfully!");
+  const handleToggleSaveJob = async (jobId: string) => {
+    try {
+      const res = await api.post<any>(`/jobs/${jobId}/save`, {});
+      if (res.success) {
+        if (savedJobIds.includes(jobId)) {
+          setSavedJobIds(savedJobIds.filter(id => id !== jobId));
+          toast.success("Job removed from saved list.");
+        } else {
+          setSavedJobIds([...savedJobIds, jobId]);
+          toast.success("Job saved successfully!");
+        }
+      }
+    } catch (err) {
+      toast.error("Failed to save job");
     }
-    setSavedJobIds(updatedSaved);
-    localStorage.setItem("dc_saved_jobs", JSON.stringify(updatedSaved));
   };
 
-  const handleApplyJob = (e: React.FormEvent) => {
+  const handleApplyJob = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedJob) return;
 
-    // Check if already applied
-    const alreadyApplied = applications.some(app => app.jobId === selectedJob.id);
-    if (alreadyApplied) {
-      toast.error("You have already applied for this job!");
-      setApplyOpen(false);
-      return;
+    try {
+      const res = await api.post<any>(`/jobs/${selectedJob.id}/apply`, {
+        resumeUrl: "https://example.com/" + applyForm.resumeName,
+        coverLetter: applyForm.coverLetter
+      });
+      if (res.success) {
+        toast.success(`Successfully applied to ${selectedJob.company?.name || selectedJob.company}!`);
+        setApplyOpen(false);
+        setApplyForm({ coverLetter: "", resumeName: "MyResume_DevConnect.pdf" });
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to apply");
     }
-
-    const newApp = {
-      id: "app_" + Date.now(),
-      jobId: selectedJob.id,
-      jobTitle: selectedJob.title,
-      companyName: selectedJob.company,
-      companyLogo: selectedJob.logo,
-      coverLetter: applyForm.coverLetter,
-      resumeName: applyForm.resumeName,
-      status: "SUBMITTED",
-      appliedAt: new Date().toISOString()
-    };
-
-    const updatedApps = [newApp, ...applications];
-    setApplications(updatedApps);
-    localStorage.setItem("dc_applications", JSON.stringify(updatedApps));
-
-    setApplyOpen(false);
-    setApplyForm({ coverLetter: "", resumeName: "MyResume_DevConnect.pdf" });
-    toast.success(`Successfully applied to ${selectedJob.company}!`);
   };
 
   const filteredJobs = useMemo(() => {
     return jobs.filter(job => {
+      const companyName = job.company?.name || job.company || "";
       const matchesSearch = job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                            job.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                            job.description.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesLocation = job.location.toLowerCase().includes(locationQuery.toLowerCase());
+        companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (job.description || "").toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesLocation = (job.location || "").toLowerCase().includes(locationQuery.toLowerCase());
       return matchesSearch && matchesLocation;
     });
   }, [jobs, searchQuery, locationQuery]);
@@ -457,7 +411,7 @@ export const JobsPage = () => {
                             <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Position</div>
                             <div className="font-semibold text-sm">{selectedJob.title}</div>
                           </div>
-                          
+
                           <div className="space-y-1.5">
                             <Label htmlFor="resume-file">Select Resume</Label>
                             <div className="flex items-center gap-2 border border-border rounded-lg bg-background p-2.5 text-xs text-muted-foreground font-mono">
