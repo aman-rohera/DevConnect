@@ -332,14 +332,14 @@ export const ConnectionsPage = () => {
                   <div key={rec.user.id} className="relative overflow-hidden rounded-2xl border border-border bg-card p-5 flex flex-col justify-between shadow-soft hover:border-border-strong transition">
                     <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-primary/5 to-transparent" />
                     <div className="relative flex items-start gap-4">
-                      <Link to={`/profile/${rec.user.id}`}>
+                      <Link to={`/profile/${rec.user.username || rec.user.id}`}>
                         <Avatar className="h-14 w-14 border border-border bg-surface">
                           <AvatarImage src={rec.user.avatarUrl || ""} />
                           <AvatarFallback>{rec.user.fullName[0]}</AvatarFallback>
                         </Avatar>
                       </Link>
                       <div className="min-w-0 flex-1">
-                        <Link to={`/profile/${rec.user.id}`} className="font-semibold text-[15px] hover:underline truncate block">
+                        <Link to={`/profile/${rec.user.username || rec.user.id}`} className="font-semibold text-[15px] hover:underline truncate block">
                           {rec.user.fullName}
                         </Link>
                         <p className="text-xs text-muted-foreground truncate mb-2">{rec.user.headline || "Software Developer"}</p>
@@ -369,7 +369,7 @@ export const ConnectionsPage = () => {
 
                     <div className="mt-5 flex gap-2">
                       <Button asChild size="sm" variant="outline" className="flex-1">
-                        <Link to={`/profile/${rec.user.id}`}>View profile</Link>
+                        <Link to={`/profile/${rec.user.username || rec.user.id}`}>View profile</Link>
                       </Button>
                       <Button size="sm" className="flex-1 gap-1" onClick={() => handleConnect(rec.user.id)}>
                         <UserPlus className="h-3.5 w-3.5" /> Connect
@@ -396,7 +396,7 @@ export const ConnectionsPage = () => {
                       <AvatarFallback>{req.sender.fullName[0]}</AvatarFallback>
                     </Avatar>
                     <div>
-                      <Link to={`/profile/${req.sender.id}`} className="font-semibold text-sm hover:underline">
+                      <Link to={`/profile/${req.sender.username || req.sender.id}`} className="font-semibold text-sm hover:underline">
                         {req.sender.fullName}
                       </Link>
                       <p className="text-xs text-muted-foreground">{req.sender.headline || "Software Developer"}</p>

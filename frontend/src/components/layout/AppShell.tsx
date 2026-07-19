@@ -103,6 +103,9 @@ export function AppShell({ children }: { children: ReactNode }) {
               <DropdownMenuItem onClick={() => navigate("/companies/create")} className="cursor-pointer">
                 <Building2 className="mr-2 h-4 w-4" /> Create Company
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate("/companies/manage")} className="cursor-pointer">
+                <Briefcase className="mr-2 h-4 w-4" /> Manage Companies
+              </DropdownMenuItem>
               {authUser?.role === "ADMIN" && (
                 <DropdownMenuItem onClick={() => navigate("/admin")} className="cursor-pointer font-semibold text-primary">
                   <ShieldAlert className="mr-2 h-4 w-4" /> Admin Panel

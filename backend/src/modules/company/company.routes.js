@@ -8,6 +8,7 @@ router.use(authenticateToken);
 
 router.post('/', companyController.create);
 router.get('/slug/:slug', companyController.getBySlug);
+router.get('/mine', companyController.getMine);
 router.get('/:id', companyController.getById);
 router.put('/:id', companyController.update);
 router.post('/:id/follow', companyController.follow);

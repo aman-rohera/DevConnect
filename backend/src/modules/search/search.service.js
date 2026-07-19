@@ -62,6 +62,7 @@ export const searchUsers = async (filters, pagination) => {
   // Define selection to strictly protect private fields and prevent N+1
   const select = {
     id: true,
+    username: true,
     fullName: true,
     createdAt: true,
     profile: {
@@ -106,6 +107,7 @@ export const searchUsers = async (filters, pagination) => {
   // Format response to flatten relationships nicely
   const formattedUsers = users.map(user => ({
     id: user.id,
+    username: user.username,
     fullName: user.fullName,
     headline: user.profile?.headline || null,
     location: user.profile?.location || null,

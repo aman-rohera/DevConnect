@@ -13,5 +13,6 @@ router.get('/applications', jobController.getApplicationsForUser);
 router.post('/:id/save', jobController.save);
 router.post('/:id/apply', jobController.apply);
 router.get('/:id/applications', jobController.listApplications);
+router.put('/applications/:appId/status', jobController.updateApplicationStatus);
 
 export default router;

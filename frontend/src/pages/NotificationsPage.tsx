@@ -61,7 +61,7 @@ export const NotificationsPage = () => {
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="text-sm">
-                          <Link to={`/profile/${actor?.id}`} className="font-medium hover:underline">
+                          <Link to={`/profile/${actor?.username || actor?.id}`} className="font-medium hover:underline">
                             {actor?.name}
                           </Link>{" "}
                           <span className="text-muted-foreground">{verb(n.type)}</span>

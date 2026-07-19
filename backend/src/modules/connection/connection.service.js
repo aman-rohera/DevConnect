@@ -35,6 +35,7 @@ const getPendingRequests = async (userId) => {
       sender: {
         select: {
           id: true,
+          username: true,
           fullName: true,
           profile: {
             select: {
@@ -100,6 +101,7 @@ const getConnections = async (userId) => {
       sender: {
         select: {
           id: true,
+          username: true,
           fullName: true,
           profile: {
             select: { headline: true, avatarUrl: true }
@@ -109,6 +111,7 @@ const getConnections = async (userId) => {
       receiver: {
         select: {
           id: true,
+          username: true,
           fullName: true,
           profile: {
             select: { headline: true, avatarUrl: true }

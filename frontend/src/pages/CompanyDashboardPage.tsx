@@ -1,21 +1,34 @@
 import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { api } from "@/services/api";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Building2, Users, Briefcase, FileText, Send, Mail } from "lucide-react";
+import { Building2, Users, Briefcase, FileText, Send, Mail, Plus, ArrowRight } from "lucide-react";
 
 export const CompanyDashboardPage = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [dashboard, setDashboard] = useState<any>(null);
+  const [managedCompanies, setManagedCompanies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("EMPLOYEE");
 
   useEffect(() => {
     const fetchDashboard = async () => {
+      setLoading(true);
+      if (id) setDashboard(null);
       try {
+        if (!id) {
+          const mineRes = await api.get<any>("/companies/mine");
+          if (mineRes.success && mineRes.companies) {
+            setManagedCompanies(mineRes.companies);
+          }
+          setLoading(false);
+          return;
+        }
+
         const res = await api.get<any>(`/companies/${id}/dashboard`);
         if (res.success && res.dashboard) {
           setDashboard(res.dashboard);
@@ -23,11 +36,11 @@ export const CompanyDashboardPage = () => {
       } catch (err) {
         console.error("Failed to load dashboard:", err);
       } finally {
-        setLoading(false);
+        if (id) setLoading(false);
       }
     };
     fetchDashboard();
-  }, [id]);
+  }, [id, navigate]);
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,14 +55,82 @@ export const CompanyDashboardPage = () => {
     }
   };
 
+  const handleUpdateAppStatus = async (appId: string, newStatus: string) => {
+    try {
+      await api.put(`/jobs/applications/${appId}/status`, { status: newStatus });
+      setDashboard((prev: any) => ({
+        ...prev,
+        jobs: prev.jobs.map((job: any) => ({
+          ...job,
+          applications: job.applications.map((app: any) => 
+            app.id === appId ? { ...app, status: newStatus } : app
+          )
+        }))
+      }));
+    } catch (err: any) {
+      alert("Failed to update status.");
+    }
+  };
+
   if (loading) {
     return <div className="p-8 text-center text-muted-foreground">Loading dashboard...</div>;
   }
 
   if (!dashboard) {
+    if (!id) {
+      if (managedCompanies.length === 0) {
+        return (
+          <div className="mx-auto max-w-5xl pt-12">
+            <EmptyState icon={Building2} title="No Companies" description="You do not manage any companies yet." />
+            <div className="mt-4 flex justify-center">
+              <Button asChild>
+                <Link to="/companies/create">Create a Company</Link>
+              </Button>
+            </div>
+          </div>
+        );
+      }
+      return (
+        <div className="mx-auto max-w-5xl space-y-8 pb-12 pt-8">
+          <h1 className="text-2xl font-bold tracking-tight">Your Managed Companies</h1>
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {managedCompanies.map(company => (
+              <Link key={company.id} to={`/companies/${company.id}/manage`} className="block group">
+                <div className="rounded-xl border border-border bg-card p-6 shadow-sm transition hover:border-primary/50 hover:shadow-md h-full flex flex-col">
+                  <Avatar className="h-12 w-12 rounded-lg border border-border mb-4">
+                    <AvatarImage src={company.logoUrl} />
+                    <AvatarFallback><Building2 className="h-6 w-6" /></AvatarFallback>
+                  </Avatar>
+                  <h3 className="font-semibold text-lg">{company.name}</h3>
+                  <p className="text-sm text-muted-foreground mt-1 line-clamp-2 flex-1">{company.description}</p>
+                  <div className="mt-4 flex items-center text-primary text-sm font-medium">
+                    Manage Dashboard <ArrowRight className="ml-1 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                  </div>
+                </div>
+              </Link>
+            ))}
+            <Link to="/companies/create" className="block">
+              <div className="rounded-xl border border-dashed border-border bg-card/50 p-6 flex flex-col items-center justify-center text-center h-full min-h-[200px] hover:bg-muted/50 transition">
+                <div className="rounded-full bg-primary/10 p-3 text-primary mb-3">
+                  <Plus className="h-6 w-6" />
+                </div>
+                <h3 className="font-medium text-foreground">Create New Company</h3>
+                <p className="text-sm text-muted-foreground mt-1">Start a new company profile</p>
+              </div>
+            </Link>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="mx-auto max-w-5xl pt-12">
-        <EmptyState icon={Building2} title="Access Denied" description="You do not have access to this company dashboard." />
+        <EmptyState icon={Building2} title="Access Denied" description="You do not manage any companies or lack permission to view this dashboard." />
+        <div className="mt-4 flex justify-center">
+          <Button asChild>
+            <Link to="/companies/create">Create a Company</Link>
+          </Button>
+        </div>
       </div>
     );
   }
@@ -174,6 +255,79 @@ export const CompanyDashboardPage = () => {
           )}
         </div>
       </div>
+
+      {/* Active Jobs & Applications */}
+      <div className="space-y-6 pt-6">
+        <h2 className="text-xl font-bold tracking-tight border-b border-border pb-3">Active Jobs & Applications</h2>
+        
+        {dashboard.jobs?.length === 0 ? (
+          <EmptyState icon={Briefcase} title="No active jobs" description="Post a job to start receiving applications." />
+        ) : (
+          <div className="grid gap-6 md:grid-cols-2">
+            {dashboard.jobs?.map((job: any) => (
+              <div key={job.id} className="rounded-xl border border-border bg-surface shadow-sm overflow-hidden flex flex-col">
+                <div className="border-b border-border bg-muted/30 px-6 py-4">
+                  <div className="flex justify-between items-start gap-4">
+                    <div>
+                      <h3 className="font-semibold text-lg">{job.title}</h3>
+                      <div className="text-sm text-muted-foreground mt-1">{job.location} • {job.type?.replace("_", " ")}</div>
+                    </div>
+                    <div className="bg-primary/10 text-primary px-2.5 py-1 rounded-full text-xs font-semibold shrink-0">
+                      {job.applications?.length || 0} Applicants
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="p-0 flex-1 flex flex-col">
+                  {job.applications?.length === 0 ? (
+                    <div className="p-6 text-center text-sm text-muted-foreground flex-1 flex items-center justify-center border-t border-border">
+                      No applications yet.
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-border">
+                      {job.applications?.map((app: any) => (
+                        <div key={app.id} className="p-4 px-6 flex items-start gap-4 hover:bg-muted/50 transition">
+                          <Avatar className="h-10 w-10 shrink-0">
+                            <AvatarImage src={app.user?.profile?.avatarUrl} />
+                            <AvatarFallback>{app.user?.fullName?.[0]}</AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium truncate">{app.user?.fullName}</div>
+                            <div className="text-xs text-muted-foreground truncate">{app.user?.email}</div>
+                            <div className="mt-2 flex items-center gap-3">
+                              <a href={app.resumeUrl} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1">
+                                <FileText className="h-3 w-3" /> View Resume
+                              </a>
+                              <select 
+                                value={app.status} 
+                                onChange={(e) => handleUpdateAppStatus(app.id, e.target.value)}
+                                className="text-[10px] uppercase font-semibold text-muted-foreground border border-border px-1.5 py-0.5 rounded outline-none bg-background cursor-pointer hover:border-primary/50 transition"
+                              >
+                                <option value="PENDING">Pending</option>
+                                <option value="REVIEWING">Reviewing</option>
+                                <option value="INTERVIEWING">Interviewing</option>
+                                <option value="OFFERED">Offered</option>
+                                <option value="HIRED">Hired</option>
+                                <option value="REJECTED">Rejected</option>
+                              </select>
+                            </div>
+                            {app.coverLetter && (
+                              <div className="mt-2 text-xs text-muted-foreground bg-background rounded-md border border-border p-2 italic line-clamp-2">
+                                "{app.coverLetter}"
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
     </div>
   );
 };

@@ -46,6 +46,19 @@ const getProfileById = async (req, res) => {
   }
 };
 
+const getByUsername = async (req, res) => {
+  const { username } = req.params;
+  try {
+    const profile = await profileService.getProfileByUsername(username);
+    if (!profile) {
+      return res.status(404).json({ success: false, message: 'User profile not found.' });
+    }
+    return res.status(200).json({ success: true, data: profile });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Failed to fetch user profile.', error: error.message });
+  }
+};
+
 const updateOwnProfile = async (req, res) => {
   const { headline, bio, avatarUrl, skills, projects, education, experience, certificates } = req.body;
 
@@ -75,4 +88,4 @@ const updateOwnProfile = async (req, res) => {
   }
 };
 
-export { getOwnProfile, getProfileById, updateOwnProfile };
+export { getOwnProfile, getProfileById, getByUsername, updateOwnProfile };

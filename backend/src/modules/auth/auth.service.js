@@ -13,6 +13,7 @@ const formatUserResponse = (user) => {
   return {
     id: user.id,
     email: user.email,
+    username: user.username,
     fullName: user.fullName,
     role: user.role,
     profile: user.profile ? {
@@ -53,11 +54,14 @@ const registerUser = async (email, password, fullName, headline = '', skillsStri
 
   const salt = await bcrypt.genSalt(10);
   const passwordHash = await bcrypt.hash(password, salt);
+  const baseUsername = fullName.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const username = baseUsername + Math.floor(Math.random() * 10000);
 
   return await prisma.$transaction(async (tx) => {
     const user = await tx.user.create({
       data: {
         email,
+        username,
         passwordHash,
         fullName,
         profile: {

@@ -11,6 +11,7 @@ const createPost = async (userId, content, imageUrl = null) => {
       user: {
         select: {
           id: true,
+          username: true,
           fullName: true,
           profile: {
             select: {
@@ -35,6 +36,7 @@ const getFeedPosts = async (currentUserId = null) => {
       user: {
         select: {
           id: true,
+          username: true,
           fullName: true,
           profile: {
             select: {

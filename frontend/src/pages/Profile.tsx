@@ -15,10 +15,10 @@ import {
 import { toast } from "sonner";
 
 export const Profile = () => {
-  const { id } = useParams<{ id: string }>();
+  const { username } = useParams<{ username: string }>();
   const { user: currentUser, token } = useAuth();
 
-  const isMe = !id || id === currentUser?.id;
+  const isMe = !username || username === currentUser?.username;
 
   const [user, setUser] = useState<any>(null);
   const [posts, setPosts] = useState<any[]>([]);
@@ -30,19 +30,27 @@ export const Profile = () => {
 
   useEffect(() => {
     fetchProfile();
-    fetchUserPosts();
-    if (!isMe && id) {
-      fetchConnectionStatus();
+  }, [username, isMe, token]);
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchUserPosts(user.id);
+      if (!isMe) {
+        fetchConnectionStatus(user.id);
+      }
     }
-  }, [id, isMe, token]);
+  }, [user?.id, isMe, token]);
 
   const fetchProfile = async () => {
     try {
       setLoading(true);
-      const endpoint = isMe ? "/profile/me" : `/profile/${id}`;
+      const endpoint = isMe ? "/profile/me" : `/profile/username/${username}`;
       const response = await api.get<any>(endpoint, { token });
       if (response.success && response.data) {
         setUser(response.data);
+        if (username && response.data.username && username !== response.data.username) {
+          navigate(`/profile/${response.data.username}`, { replace: true });
+        }
       }
     } catch (err: any) {
       console.error("Failed to load profile", err);
@@ -52,13 +60,11 @@ export const Profile = () => {
     }
   };
 
-  const fetchUserPosts = async () => {
+  const fetchUserPosts = async (userId: string) => {
     try {
       const response = await api.get<any>("/posts/feed", { token });
       if (response.success && response.posts) {
-        // Filter posts created by this user
-        const targetId = isMe ? currentUser?.id : id;
-        const filtered = response.posts.filter((p: any) => p.user?.id === targetId);
+        const filtered = response.posts.filter((p: any) => p.user?.id === userId);
         setPosts(filtered);
       }
     } catch (err) {
@@ -66,12 +72,12 @@ export const Profile = () => {
     }
   };
 
-  const fetchConnectionStatus = async () => {
+  const fetchConnectionStatus = async (targetId: string) => {
     try {
       const response = await api.get<any>("/connections", { token });
       if (response.success && response.connections) {
         const conn = response.connections.find(
-          (c: any) => c.senderId === id || c.receiverId === id
+          (c: any) => c.senderId === targetId || c.receiverId === targetId
         );
         if (conn) {
           if (conn.status === "PENDING") {
@@ -83,19 +89,19 @@ export const Profile = () => {
           setConnectionStatus("Connect");
         }
       }
-    } catch (e) {
-      console.error("Failed to fetch connections", e);
+    } catch (err) {
+      console.error("Failed to check connection status", err);
     }
   };
 
   const handleConnectRequest = async () => {
-    if (!id || connectionStatus !== "Connect") return;
+    if (!user?.id || connectionStatus !== "Connect") return;
     setConnecting(true);
     setConnectionStatus("Pending...");
     try {
       const response = await api.post<any>(
         "/connections/request",
-        { receiverId: id },
+        { receiverId: user.id },
         { token }
       );
       if (response.success) {
@@ -113,11 +119,11 @@ export const Profile = () => {
   };
 
   const handleMessage = async () => {
-    if (!id) return;
+    if (!user?.id) return;
     
     try {
       // Create or get conversation from backend
-      const res = await api.post<any>("/chat/conversations", { targetUserId: id, title: "Chat" }, { token });
+      const res = await api.post<any>("/chat/conversations", { targetUserId: user.id, title: "Chat" }, { token });
       if (res.success && res.conversation) {
         navigate(`/messages?c=${res.conversation.id}`);
       } else {
@@ -201,6 +207,9 @@ export const Profile = () => {
               <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">{user.fullName}</h1>
               {user.verified && <BadgeCheck className="h-5 w-5 text-primary" />}
             </div>
+            {user.username && (
+              <div className="text-sm font-medium text-muted-foreground mb-0.5">@{user.username}</div>
+            )}
             <div className="text-sm text-muted-foreground">{user.headline || "Software Developer"}</div>
             
             {user.bio && (

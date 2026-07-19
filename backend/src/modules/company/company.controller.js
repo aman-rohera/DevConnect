@@ -88,4 +88,13 @@ const invite = async (req, res) => {
   }
 };
 
-export { create, getById, getBySlug, update, follow, unfollow, getDashboard, invite };
+const getMine = async (req, res) => {
+  try {
+    const companies = await companyService.getMyCompanies(req.user.id);
+    res.json({ success: true, companies });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export { create, getById, getBySlug, update, follow, unfollow, getDashboard, invite, getMine };

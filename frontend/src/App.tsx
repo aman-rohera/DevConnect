@@ -13,6 +13,8 @@ import { NotificationsPage } from "@/pages/NotificationsPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { JobsPage } from "@/pages/JobsPage";
 import { CreateCompanyPage } from "@/pages/CreateCompanyPage";
+import { CompanyPage } from "@/pages/CompanyPage";
+import { CompanyDashboardPage } from "@/pages/CompanyDashboardPage";
 import { AdminDashboardPage } from "@/pages/AdminDashboardPage";
 import { OnboardingPage } from "@/pages/OnboardingPage";
 import { AppShell } from "@/components/layout/AppShell";
@@ -29,8 +31,8 @@ import "@/styles.css";
  * and remount the Profile component when navigating between different profiles.
  */
 const ProfileRouteWrapper = () => {
-  const { id } = useParams<{ id: string }>();
-  return <Profile key={id || "me"} />;
+  const { username } = useParams<{ username: string }>();
+  return <Profile key={username || "me"} />;
 };
 
 /**
@@ -134,7 +136,7 @@ function App() {
                 <Route element={<ProtectedRoute><AppShellLayout /></ProtectedRoute>}>
                   <Route path="/" element={<Dashboard />} />
                   <Route path="/profile" element={<ProfileRouteWrapper />} />
-                  <Route path="/profile/:id" element={<ProfileRouteWrapper />} />
+                  <Route path="/profile/:username" element={<ProfileRouteWrapper />} />
                   <Route path="/settings" element={<SettingsPage />} />
                   <Route path="/recommendations" element={<Navigate to="/connections" replace />} />
                   <Route path="/explore" element={<ExplorePage />} />
@@ -143,6 +145,9 @@ function App() {
                   <Route path="/notifications" element={<NotificationsPage />} />
                   <Route path="/jobs" element={<JobsPage />} />
                   <Route path="/companies/create" element={<CreateCompanyPage />} />
+                  <Route path="/companies/manage" element={<CompanyDashboardPage />} />
+                  <Route path="/companies/:id/manage" element={<CompanyDashboardPage />} />
+                  <Route path="/company/:slug" element={<CompanyPage />} />
                   <Route path="/admin" element={<AdminDashboardPage />} />
                 </Route>
 

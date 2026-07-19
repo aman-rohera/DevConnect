@@ -199,6 +199,21 @@ const getUserApplications = async (userId) => {
   });
 };
 
+const updateApplicationStatus = async (appId, status, userId) => {
+  // Add some simple validation here if needed to check if the user manages the company
+  const app = await prisma.application.findUnique({
+    where: { id: appId },
+    include: { job: true }
+  });
+  if (!app) throw new Error('Application not found');
+  
+  // Here we assume the frontend sends a valid status like REVIEWING, HIRED, REJECTED
+  return prisma.application.update({
+    where: { id: appId },
+    data: { status }
+  });
+};
+
 export { 
   createJob, 
   getJobs, 
@@ -206,5 +221,6 @@ export {
   getSavedJobs, 
   applyToJob, 
   getApplications, 
-  getUserApplications 
+  getUserApplications,
+  updateApplicationStatus
 };

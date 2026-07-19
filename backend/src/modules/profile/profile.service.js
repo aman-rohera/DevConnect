@@ -7,6 +7,7 @@ const getUserProfile = async (userId) => {
     select: {
       id: true,
       email: true,
+      username: true,
       fullName: true,
       role: true,
       createdAt: true,
@@ -73,6 +74,73 @@ const getUserProfile = async (userId) => {
     projects: user.projects || [],
     certificates: user.profile?.certificates || [],
     skills: formattedSkills
+  };
+};
+
+const getProfileByUsername = async (usernameOrId) => {
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(usernameOrId);
+  
+  const user = await prisma.user.findUnique({
+    where: isUuid ? { id: usernameOrId } : { username: usernameOrId },
+    select: {
+      id: true,
+      email: true,
+      username: true,
+      fullName: true,
+      role: true,
+      createdAt: true,
+      profile: {
+        select: {
+          headline: true,
+          bio: true,
+          location: true,
+          website: true,
+          avatarUrl: true,
+          coverUrl: true,
+          certificates: true
+        }
+      },
+      education: true,
+      experiences: true,
+      projects: true,
+      skills: {
+        select: {
+          skill: { select: { name: true } }
+        }
+      }
+    }
+  });
+
+  if (!user) return null;
+
+  const formattedSkills = user.skills ? user.skills.map(s => s.skill.name) : [];
+  const formattedExperiences = (user.experiences || []).map(exp => ({
+    id: exp.id,
+    company: exp.companyName,
+    companyName: exp.companyName,
+    role: exp.title,
+    title: exp.title,
+    location: exp.location,
+    startDate: exp.startDate,
+    endDate: exp.endDate,
+    description: exp.description
+  }));
+  const formattedEducation = (user.education || []).map(edu => ({
+    id: edu.id,
+    school: edu.school,
+    degree: edu.degree,
+    fieldOfStudy: edu.fieldOfStudy,
+    startDate: edu.startDate,
+    endDate: edu.endDate,
+    description: edu.description
+  }));
+
+  return {
+    ...user,
+    skills: formattedSkills,
+    experiences: formattedExperiences,
+    experience: formattedExperiences,
+    education: formattedEducation
   };
 };
 
@@ -241,4 +309,4 @@ const updateUserProfile = async (userId, data) => {
   return finalProfile;
 };
 
-export { getUserProfile, updateUserProfile };
+export { getUserProfile, getProfileByUsername, updateUserProfile };

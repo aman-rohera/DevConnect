@@ -161,6 +161,14 @@ const getDepartments = async (companyId) => {
   });
 };
 
+const getMyCompanies = async (userId) => {
+  const members = await prisma.companyMember.findMany({
+    where: { userId, role: { in: ['OWNER', 'ADMIN'] } },
+    include: { company: true }
+  });
+  return members.map(m => m.company);
+};
+
 const getCompanyDashboard = async (companyId, userId) => {
   const member = await prisma.companyMember.findUnique({
     where: {
@@ -191,7 +199,24 @@ const getCompanyDashboard = async (companyId, userId) => {
           }
         }
       },
-      jobs: true,
+      jobs: {
+        include: {
+          applications: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  fullName: true,
+                  email: true,
+                  profile: {
+                    select: { avatarUrl: true, headline: true }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       _count: {
         select: {
           followers: true
@@ -257,5 +282,6 @@ export {
   unfollowCompany, 
   getDepartments,
   getCompanyDashboard,
-  inviteToCompany
+  inviteToCompany,
+  getMyCompanies
 };

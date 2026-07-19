@@ -138,7 +138,7 @@ export const Dashboard = () => {
             <div className="mt-4 space-y-3">
               {suggestions.map((u) => (
                 <div key={u.id} className="flex items-center gap-3">
-                  <Link to={`/profile/${u.id}`}>
+                  <Link to={`/profile/${u.username || u.id}`}>
                     <Avatar className="h-9 w-9 border border-border">
                       <AvatarImage src={u.avatarUrl || ""} />
                       <AvatarFallback>{u.fullName[0]}</AvatarFallback>
@@ -146,7 +146,7 @@ export const Dashboard = () => {
                   </Link>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1">
-                      <Link to={`/profile/${u.id}`} className="truncate text-sm font-medium hover:underline">
+                      <Link to={`/profile/${u.username || u.id}`} className="truncate text-sm font-medium hover:underline">
                         {u.fullName}
                       </Link>
                       {u.verified && <BadgeCheck className="h-3.5 w-3.5 text-primary" />}

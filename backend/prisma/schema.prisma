@@ -136,6 +136,7 @@ enum NotificationEntityType {
 model User {
   id           String   @id @default(uuid()) @db.Uuid
   email        String   @unique
+  username     String?  @unique
   passwordHash String   @map("password_hash")
   fullName     String   @map("full_name")
   role         UserRole @default(USER)

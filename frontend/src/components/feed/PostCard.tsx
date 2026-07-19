@@ -275,7 +275,7 @@ export function PostCard({ post }: { post: any }) {
           </div>
         )}
         <header className="flex items-start gap-3">
-          <Link to={`/profile/${author.id}`} className="shrink-0">
+          <Link to={`/profile/${author.username || author.id}`} className="shrink-0">
             <Avatar className="h-10 w-10 border border-border">
               <AvatarImage src={author.avatar} />
               <AvatarFallback>{author.name[0]}</AvatarFallback>
@@ -284,7 +284,7 @@ export function PostCard({ post }: { post: any }) {
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-0 text-sm">
               <Link
-                to={`/profile/${author.id}`}
+                to={`/profile/${author.username || author.id}`}
                 className="truncate font-semibold hover:underline underline-offset-2"
               >
                 {author.name}

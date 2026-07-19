@@ -72,4 +72,15 @@ const getApplicationsForUser = async (req, res) => {
   }
 };
 
-export { create, list, save, getSaved, apply, listApplications, getApplicationsForUser };
+const updateApplicationStatus = async (req, res) => {
+  try {
+    const { appId } = req.params;
+    const { status } = req.body;
+    const application = await jobService.updateApplicationStatus(appId, status, req.user.id);
+    res.json({ success: true, application });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+export { create, list, save, getSaved, apply, listApplications, getApplicationsForUser, updateApplicationStatus };

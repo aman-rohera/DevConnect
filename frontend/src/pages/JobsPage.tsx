@@ -162,10 +162,15 @@ export const JobsPage = () => {
   const filteredJobs = useMemo(() => {
     return jobs.filter(job => {
       const companyName = job.company?.name || job.company || "";
-      const matchesSearch = job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (job.description || "").toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesLocation = (job.location || "").toLowerCase().includes(locationQuery.toLowerCase());
+      const title = job.title || "";
+      const description = job.description || "";
+      const location = job.location || "";
+      
+      const search = searchQuery.toLowerCase();
+      const matchesSearch = title.toLowerCase().includes(search) ||
+        companyName.toLowerCase().includes(search) ||
+        description.toLowerCase().includes(search);
+      const matchesLocation = location.toLowerCase().includes(locationQuery.toLowerCase());
       return matchesSearch && matchesLocation;
     });
   }, [jobs, searchQuery, locationQuery]);
@@ -311,7 +316,7 @@ export const JobsPage = () => {
                   >
                     <div className="flex gap-4">
                       <div className="h-12 w-12 rounded-lg border border-border bg-surface flex items-center justify-center overflow-hidden shrink-0">
-                        <img src={job.logo} alt={job.company} className="h-8 w-8 object-contain" />
+                        <img src={job.company?.logoUrl || `https://api.dicebear.com/9.x/glass/svg?seed=${job.id}`} alt={job.company?.name || "Company"} className="h-8 w-8 object-contain" />
                       </div>
                       <div className="min-w-0 flex-1 space-y-1">
                         <div className="flex items-center justify-between">
@@ -332,7 +337,7 @@ export const JobsPage = () => {
                           </button>
                         </div>
                         <div className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
-                          <span className="text-foreground/80">{job.company}</span>
+                          <span className="text-foreground/80">{job.company?.name || "Unknown Company"}</span>
                           <span>•</span>
                           <span>{job.location}</span>
                         </div>
@@ -357,11 +362,11 @@ export const JobsPage = () => {
                 <div className="rounded-2xl border border-border bg-card p-5 space-y-5 sticky top-20 shadow-soft">
                   <div className="flex gap-4">
                     <div className="h-14 w-14 rounded-xl border border-border bg-surface flex items-center justify-center overflow-hidden shrink-0">
-                      <img src={selectedJob.logo} alt={selectedJob.company} className="h-10 w-10 object-contain" />
+                      <img src={selectedJob.company?.logoUrl || `https://api.dicebear.com/9.x/glass/svg?seed=${selectedJob.id}`} alt={selectedJob.company?.name || "Company"} className="h-10 w-10 object-contain" />
                     </div>
                     <div>
                       <h2 className="font-semibold text-base sm:text-lg leading-tight">{selectedJob.title}</h2>
-                      <div className="text-xs text-muted-foreground mt-0.5 font-medium">{selectedJob.company}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5 font-medium">{selectedJob.company?.name || "Unknown Company"}</div>
                     </div>
                   </div>
 
@@ -387,15 +392,18 @@ export const JobsPage = () => {
                     </div>
                   </dl>
 
-                  {selectedJob.skills.length > 0 && (
+                  {selectedJob.skills && selectedJob.skills.length > 0 && (
                     <div className="space-y-2">
                       <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">Required Skills</h4>
                       <div className="flex flex-wrap gap-1.5">
-                        {selectedJob.skills.map((skill: string) => (
-                          <span key={skill} className="rounded bg-surface border border-border px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
-                            {skill}
-                          </span>
-                        ))}
+                        {selectedJob.skills.map((s: any, idx: number) => {
+                          const skillName = s?.skill?.name || s?.name || (typeof s === "string" ? s : "Skill");
+                          return (
+                            <span key={idx} className="rounded bg-surface border border-border px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
+                              {skillName}
+                            </span>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
@@ -415,7 +423,7 @@ export const JobsPage = () => {
                       </DialogTrigger>
                       <DialogContent className="max-w-md p-6 border-border bg-surface">
                         <DialogHeader>
-                          <DialogTitle>Apply to {selectedJob.company}</DialogTitle>
+                          <DialogTitle>Apply to {selectedJob.company?.name || "Company"}</DialogTitle>
                         </DialogHeader>
                         <form onSubmit={handleApplyJob} className="space-y-4 mt-3">
                           <div className="p-3.5 rounded-xl border border-border bg-card space-y-1">
@@ -473,11 +481,11 @@ export const JobsPage = () => {
                 <Card key={job.id} className="p-4 border border-border bg-card flex justify-between gap-4">
                   <div className="flex gap-3">
                     <div className="h-10 w-10 rounded-lg border border-border bg-surface flex items-center justify-center overflow-hidden shrink-0">
-                      <img src={job.logo} alt={job.company} className="h-6 w-6 object-contain" />
+                      <img src={job.company?.logoUrl || `https://api.dicebear.com/9.x/glass/svg?seed=${job.id}`} alt={job.company?.name || "Company"} className="h-6 w-6 object-contain" />
                     </div>
                     <div>
                       <h3 className="font-semibold text-sm">{job.title}</h3>
-                      <div className="text-[11px] text-muted-foreground">{job.company} • {job.location}</div>
+                      <div className="text-[11px] text-muted-foreground">{job.company?.name || "Unknown Company"} • {job.location}</div>
                     </div>
                   </div>
                   <Button size="sm" variant="ghost" className="text-destructive shrink-0 h-8 px-2" onClick={() => handleToggleSaveJob(job.id)}>
