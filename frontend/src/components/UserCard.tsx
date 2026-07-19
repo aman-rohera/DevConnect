@@ -6,7 +6,7 @@ import { BadgeCheck } from "lucide-react";
 
 export function UserCard({ user, compact }: { user: any; compact?: boolean }) {
   const { following, toggleFollow, currentUser } = useAppData();
-  const isMe = user.id === currentUser.id;
+  const isMe = currentUser ? user.id === currentUser.id : false;
   const isFollowing = following.has(user.id);
 
   const name = user.fullName || user.name || "Developer";

@@ -13,6 +13,11 @@ const createJob = async (recruiterId, data) => {
     throw new Error('Only registered recruiters can post jobs');
   }
 
+  // Ensure that if a companyId is specified in the body, it matches the recruiter's company
+  if (data.companyId && data.companyId !== recruiter.companyId) {
+    throw new Error('Unauthorized: You can only post jobs for your registered company');
+  }
+
   const job = await prisma.job.create({
     data: {
       companyId: recruiter.companyId,
@@ -121,7 +126,35 @@ const applyToJob = async (userId, jobId, resumeUrl) => {
   });
 };
 
-const getApplications = async (jobId) => {
+const getApplications = async (jobId, userId) => {
+  const job = await prisma.job.findUnique({
+    where: { id: jobId },
+    include: { recruiter: true }
+  });
+
+  if (!job) {
+    throw new Error('Job not found');
+  }
+
+  // Check if requesting user is the recruiter who posted it
+  const isPoster = job.recruiter.userId === userId;
+
+  // Check if requesting user is a company owner or admin
+  const member = await prisma.companyMember.findUnique({
+    where: {
+      companyId_userId: {
+        companyId: job.companyId,
+        userId
+      }
+    }
+  });
+
+  const isAuthorized = isPoster || (member && (member.role === 'OWNER' || member.role === 'ADMIN'));
+
+  if (!isAuthorized) {
+    throw new Error('Unauthorized: Only company recruiters, owners, or admins can view applications');
+  }
+
   const list = await prisma.application.findMany({
     where: { jobId },
     include: {
@@ -153,4 +186,25 @@ const getApplications = async (jobId) => {
   }));
 };
 
-export { createJob, getJobs, saveJob, getSavedJobs, applyToJob, getApplications };
+const getUserApplications = async (userId) => {
+  return prisma.application.findMany({
+    where: { userId },
+    include: {
+      job: {
+        include: {
+          company: true
+        }
+      }
+    }
+  });
+};
+
+export { 
+  createJob, 
+  getJobs, 
+  saveJob, 
+  getSavedJobs, 
+  applyToJob, 
+  getApplications, 
+  getUserApplications 
+};

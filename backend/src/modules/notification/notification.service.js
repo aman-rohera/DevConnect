@@ -44,4 +44,14 @@ const getUnreadCount = async (userId) => {
   return { count };
 };
 
-export { createNotification, getNotifications, markAsRead, getUnreadCount };
+const markAllAsRead = async (userId) => {
+  return prisma.notification.updateMany({
+    where: { 
+      userId,
+      isRead: false
+    },
+    data: { isRead: true }
+  });
+};
+
+export { createNotification, getNotifications, markAsRead, getUnreadCount, markAllAsRead };

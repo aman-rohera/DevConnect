@@ -55,11 +55,21 @@ const apply = async (req, res) => {
 const listApplications = async (req, res) => {
   try {
     const { id } = req.params;
-    const applications = await jobService.getApplications(id);
+    const applications = await jobService.getApplications(id, req.user.id);
+    res.json({ success: true, applications });
+  } catch (error) {
+    const status = error.message.includes('Unauthorized') ? 403 : 400;
+    res.status(status).json({ success: false, message: error.message });
+  }
+};
+
+const getApplicationsForUser = async (req, res) => {
+  try {
+    const applications = await jobService.getUserApplications(req.user.id);
     res.json({ success: true, applications });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-export { create, list, save, getSaved, apply, listApplications };
+export { create, list, save, getSaved, apply, listApplications, getApplicationsForUser };

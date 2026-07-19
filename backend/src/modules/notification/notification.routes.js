@@ -8,6 +8,7 @@ router.use(authenticateToken);
 
 router.get('/', notificationController.getMyNotifications);
 router.get('/unread-count', notificationController.getUnreadCount);
+router.put('/read-all', notificationController.markAllRead);
 router.put('/:id/read', notificationController.markRead);
 
 export default router;

@@ -9,6 +9,7 @@ router.use(authenticateToken);
 router.post('/', jobController.create);
 router.get('/', jobController.list);
 router.get('/saved', jobController.getSaved);
+router.get('/applications', jobController.getApplicationsForUser);
 router.post('/:id/save', jobController.save);
 router.post('/:id/apply', jobController.apply);
 router.get('/:id/applications', jobController.listApplications);

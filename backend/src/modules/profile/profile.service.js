@@ -41,6 +41,20 @@ const getUserProfile = async (userId) => {
   // Flatten the skills array so it returns simple string array like ["React.js", "Node.js"]
   const formattedSkills = user.skills ? user.skills.map(s => s.skill.name) : [];
 
+  const formattedExperiences = (user.experiences || []).map(exp => ({
+    id: exp.id,
+    company: exp.companyName,
+    companyName: exp.companyName,
+    role: exp.title,
+    title: exp.title,
+    location: exp.location,
+    type: exp.type,
+    isCurrent: exp.isCurrent,
+    startDate: exp.startDate,
+    endDate: exp.endDate,
+    description: exp.description
+  }));
+
   // Format response to maintain backward compatibility or align with expected format
   return {
     id: user.id,
@@ -55,11 +69,7 @@ const getUserProfile = async (userId) => {
     avatarUrl: user.profile?.avatarUrl || null,
     coverUrl: user.profile?.coverUrl || null,
     education: user.education || [],
-    experience: user.experiences ? user.experiences.map(exp => ({
-      ...exp,
-      company: exp.companyName,
-      role: exp.title
-    })) : [],
+    experience: formattedExperiences,
     projects: user.projects || [],
     certificates: user.profile?.certificates || [],
     skills: formattedSkills

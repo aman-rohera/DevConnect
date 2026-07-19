@@ -51,9 +51,10 @@ export const JobsPage = () => {
 
   const fetchJobsData = async () => {
     try {
-      const [jobsRes, savedRes] = await Promise.all([
+      const [jobsRes, savedRes, appsRes] = await Promise.all([
         api.get<any>("/jobs"),
-        api.get<any>("/jobs/saved")
+        api.get<any>("/jobs/saved"),
+        api.get<any>("/jobs/applications")
       ]);
 
       if (jobsRes.success && jobsRes.jobs) {
@@ -64,7 +65,17 @@ export const JobsPage = () => {
         setSavedJobIds(savedRes.saved.map((s: any) => s.jobId));
       }
 
-      setApplications([]);
+      if (appsRes.success && appsRes.applications) {
+        setApplications(appsRes.applications.map((app: any) => ({
+          id: app.id,
+          jobId: app.jobId,
+          jobTitle: app.job?.title || 'Unknown Role',
+          companyName: app.job?.company?.name || 'Unknown Company',
+          companyLogo: app.job?.company?.logoUrl || '',
+          appliedAt: app.createdAt,
+          status: app.status
+        })));
+      }
     } catch (err) {
       console.error("Failed to load jobs", err);
     }
