@@ -29,9 +29,9 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     'Content-Type': 'application/json',
   };
 
-  // If a token is provided or stored in localStorage, attach it
-  const authToken = token || localStorage.getItem('dc_token');
-  if (authToken) {
+  // If a valid JWT token is provided or stored in localStorage, attach it
+  const authToken = (token && token !== 'cookie-based') ? token : localStorage.getItem('dc_token');
+  if (authToken && authToken !== 'cookie-based') {
     defaultHeaders['Authorization'] = `Bearer ${authToken}`;
   }
 

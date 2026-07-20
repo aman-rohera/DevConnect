@@ -48,7 +48,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const response = await api.get<ApiResponse<{ user: User }>>('/auth/me');
         if (response.success && response.data.user) {
           setUser(response.data.user);
-          setToken('cookie-based');
+          const storedToken = localStorage.getItem('dc_token');
+          setToken(storedToken || 'cookie-based');
         } else {
           setUser(null);
         }
@@ -68,14 +69,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setIsLoading(true);
     setError(null);
     try {
-      const response = await api.post<ApiResponse<{ user: User }>>('/auth/login', {
+      const response = await api.post<ApiResponse<{ user: User; session?: { access_token: string } }>>('/auth/login', {
         email,
         password,
       });
 
       if (response.success && response.data) {
-        const { user: loggedUser } = response.data;
-        setToken('cookie-based');
+        const { user: loggedUser, session } = response.data as any;
+        const jwtToken = session?.access_token;
+        if (jwtToken) {
+          localStorage.setItem('dc_token', jwtToken);
+          setToken(jwtToken);
+        } else {
+          setToken('cookie-based');
+        }
         setUser(loggedUser);
       }
     } catch (err: any) {
