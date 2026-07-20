@@ -10,7 +10,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import {
   BadgeCheck, MapPin, Building2, Globe, Github,
   Settings, MessageCircle, Link as LinkIcon, FileText,
-  Image as ImageIcon, Calendar, Briefcase, GraduationCap, Award
+  Image as ImageIcon, Calendar, Briefcase, GraduationCap, Award, ExternalLink
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -249,6 +249,7 @@ export const Profile = () => {
         <TabsList className="w-full justify-start overflow-x-auto h-auto flex p-1 gap-1">
           <TabsTrigger value="posts" className="py-2"><FileText className="mr-1.5 h-3.5 w-3.5" />Posts</TabsTrigger>
           <TabsTrigger value="media" className="py-2"><ImageIcon className="mr-1.5 h-3.5 w-3.5" />Media</TabsTrigger>
+          <TabsTrigger value="resume" className="py-2"><FileText className="mr-1.5 h-3.5 w-3.5" />Resume</TabsTrigger>
           <TabsTrigger value="projects" className="py-2"><Briefcase className="mr-1.5 h-3.5 w-3.5" />Projects</TabsTrigger>
           <TabsTrigger value="experience" className="py-2"><Building2 className="mr-1.5 h-3.5 w-3.5" />Experience</TabsTrigger>
           <TabsTrigger value="education" className="py-2"><GraduationCap className="mr-1.5 h-3.5 w-3.5" />Education</TabsTrigger>
@@ -275,6 +276,42 @@ export const Profile = () => {
                   <img src={p.imageUrl} alt="" className="h-full w-full object-cover transition hover:scale-105" />
                 </div>
               ))}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Resume Tab Content */}
+        <TabsContent value="resume" className="mt-4">
+          {(user.resumeUrl || user.profile?.resumeUrl) ? (
+            <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20">
+                    <FileText className="h-7 w-7" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-base">{user.fullName}'s Resume</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">Professional CV / Resume Document (PDF)</p>
+                  </div>
+                </div>
+                <Button asChild size="default" className="gap-2">
+                  <a href={user.resumeUrl || user.profile?.resumeUrl} target="_blank" rel="noopener noreferrer">
+                    <span>View / Download Resume</span>
+                    <ExternalLink className="h-4 w-4" />
+                  </a>
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <EmptyState icon={FileText} title="No resume uploaded yet" description={`${user.fullName} has not attached a resume to their profile.`} />
+              {isMe && (
+                <div className="text-center">
+                  <Button size="sm" variant="outline" asChild>
+                    <Link to="/settings">Upload Resume in Settings</Link>
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </TabsContent>

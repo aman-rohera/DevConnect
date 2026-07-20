@@ -50,3 +50,22 @@ export const uploadMediaFile = async (file: File): Promise<UploadedMedia> => {
     type: resourceType
   };
 };
+
+// Function to upload PDF documents (Resume/CV) to Cloudinary
+export const uploadPdfFile = async (pdfFile: File): Promise<string> => {
+  if (!pdfFile) throw new Error("No PDF file provided");
+  if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
+    throw new Error("Cloudinary credentials are not configured in VITE environment variables.");
+  }
+
+  const formData = new FormData();
+  formData.append("file", pdfFile);
+  formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+
+  const response = await axios.post(
+    `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`,
+    formData
+  );
+
+  return response.data.secure_url;
+};

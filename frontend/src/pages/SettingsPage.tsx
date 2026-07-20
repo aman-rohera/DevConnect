@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { uploadProfilePhoto } from "@/utils/cloudinary";
-import { Camera, X, Plus, ArrowLeft, Trash2 } from "lucide-react";
+import { uploadProfilePhoto, uploadPdfFile } from "@/utils/cloudinary";
+import { Camera, X, Plus, ArrowLeft, Trash2, FileText, UploadCloud, CheckCircle2, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 
 export const SettingsPage = () => {
@@ -20,6 +20,7 @@ export const SettingsPage = () => {
     headline: "",
     bio: "",
     avatarUrl: "",
+    resumeUrl: "",
     skills: [] as string[],
     projects: [] as any[],
     experience: [] as any[],
@@ -30,7 +31,9 @@ export const SettingsPage = () => {
   const [skillInput, setSkillInput] = useState("");
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [uploadingResume, setUploadingResume] = useState(false);
   const avatarRef = useRef<HTMLInputElement>(null);
+  const resumeRef = useRef<HTMLInputElement>(null);
 
   // Sub-forms local input states
   const [newProj, setNewProj] = useState({ title: "", description: "", projectUrl: "", repoUrl: "" });
@@ -53,6 +56,7 @@ export const SettingsPage = () => {
           headline: p.headline || "",
           bio: p.bio || "",
           avatarUrl: p.avatarUrl || "",
+          resumeUrl: p.resumeUrl || "",
           skills: p.skills || [],
           projects: p.projects || [],
           experience: p.experience || [],
@@ -85,6 +89,29 @@ export const SettingsPage = () => {
     }
   };
 
+  const handleResumeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.endsWith('.pdf') && file.type !== 'application/pdf') {
+      toast.error("Please select a valid PDF document.");
+      return;
+    }
+
+    setUploadingResume(true);
+    toast.info("Uploading PDF Resume...");
+    try {
+      const secureUrl = await uploadPdfFile(file);
+      update({ resumeUrl: secureUrl });
+      toast.success("Resume uploaded successfully!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Resume upload failed.");
+    } finally {
+      setUploadingResume(false);
+    }
+  };
+
   const save = async () => {
     setSaving(true);
     try {
@@ -92,6 +119,7 @@ export const SettingsPage = () => {
         headline: form.headline,
         bio: form.bio,
         avatarUrl: form.avatarUrl,
+        resumeUrl: form.resumeUrl,
         skills: form.skills,
         projects: form.projects,
         experience: form.experience,
@@ -165,6 +193,81 @@ export const SettingsPage = () => {
         <Field label="Bio" hint={`${form.bio.length} / 160`}>
           <Textarea rows={3} maxLength={160} value={form.bio} onChange={(e) => update({ bio: e.target.value })} placeholder="Tell us about yourself..." />
         </Field>
+      </Section>
+
+      {/* Resume / CV Section */}
+      <Section title="Resume / CV (PDF)" description="Upload your professional resume in PDF format so developers and recruiters can view it.">
+        <input
+          ref={resumeRef}
+          type="file"
+          accept=".pdf,application/pdf"
+          className="hidden"
+          onChange={handleResumeUpload}
+        />
+
+        {form.resumeUrl ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-accent/30 p-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-500">
+                <FileText className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 text-sm font-medium">
+                  <span>Resume Attached (PDF)</span>
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                </div>
+                <a
+                  href={form.resumeUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-primary hover:underline flex items-center gap-1 mt-0.5"
+                >
+                  <span>View uploaded resume</span>
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={uploadingResume}
+                onClick={() => resumeRef.current?.click()}
+              >
+                {uploadingResume ? "Uploading..." : "Replace PDF"}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={() => update({ resumeUrl: "" })}
+              >
+                Remove
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border p-6 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent text-muted-foreground mb-3">
+              <UploadCloud className="h-6 w-6" />
+            </div>
+            <h4 className="text-sm font-medium">Upload your Resume</h4>
+            <p className="text-xs text-muted-foreground mt-1 mb-4 max-w-sm">
+              PDF format supported. It will be displayed in the Resume tab on your profile.
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={uploadingResume}
+              onClick={() => resumeRef.current?.click()}
+            >
+              {uploadingResume ? "Uploading PDF..." : "Select PDF File"}
+            </Button>
+          </div>
+        )}
       </Section>
 
       {/* Skills Section */}

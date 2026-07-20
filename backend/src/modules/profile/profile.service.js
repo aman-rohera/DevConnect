@@ -16,6 +16,7 @@ const getUserProfile = async (userId) => {
           headline: true,
           bio: true,
           location: true,
+          resumeUrl: true,
           website: true,
           avatarUrl: true,
           coverUrl: true,
@@ -67,6 +68,7 @@ const getUserProfile = async (userId) => {
     bio: user.profile?.bio || null,
     location: user.profile?.location || null,
     website: user.profile?.website || null,
+    resumeUrl: user.profile?.resumeUrl || null,
     avatarUrl: user.profile?.avatarUrl || null,
     coverUrl: user.profile?.coverUrl || null,
     education: user.education || [],
@@ -94,6 +96,7 @@ const getProfileByUsername = async (usernameOrId) => {
           headline: true,
           bio: true,
           location: true,
+          resumeUrl: true,
           website: true,
           avatarUrl: true,
           coverUrl: true,
@@ -137,6 +140,7 @@ const getProfileByUsername = async (usernameOrId) => {
 
   return {
     ...user,
+    resumeUrl: user.profile?.resumeUrl || null,
     skills: formattedSkills,
     experiences: formattedExperiences,
     experience: formattedExperiences,
@@ -145,7 +149,7 @@ const getProfileByUsername = async (usernameOrId) => {
 };
 
 const updateUserProfile = async (userId, data) => {
-  const { headline, bio, location, website, avatarUrl, coverUrl, skills, education, experience, projects, certificates } = data;
+  const { headline, bio, location, resumeUrl, website, avatarUrl, coverUrl, skills, education, experience, projects, certificates } = data;
 
   // 1. Update basic profile info
   await prisma.user.update({
@@ -157,6 +161,7 @@ const updateUserProfile = async (userId, data) => {
             headline,
             bio,
             location,
+            resumeUrl,
             website,
             avatarUrl,
             coverUrl
@@ -165,6 +170,7 @@ const updateUserProfile = async (userId, data) => {
             headline,
             bio,
             location,
+            resumeUrl,
             website,
             avatarUrl,
             coverUrl

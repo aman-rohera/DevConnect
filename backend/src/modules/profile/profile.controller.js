@@ -60,13 +60,17 @@ const getByUsername = async (req, res) => {
 };
 
 const updateOwnProfile = async (req, res) => {
-  const { headline, bio, avatarUrl, skills, projects, education, experience, certificates } = req.body;
+  const { headline, bio, location, website, resumeUrl, avatarUrl, coverUrl, skills, projects, education, experience, certificates } = req.body;
 
   try {
     const updatedProfile = await profileService.updateUserProfile(req.user.id, {
       headline,
       bio,
+      location,
+      website,
+      resumeUrl,
       avatarUrl,
+      coverUrl,
       skills,
       projects,
       education,
