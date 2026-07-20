@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useAppData } from "@/lib/app-data";
 import { useAuth } from "@/context/AuthContext";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Heart, MessageCircle, Repeat2, Bookmark, MoreHorizontal, BadgeCheck, Share2, Loader2 } from "lucide-react";
+import { Heart, MessageCircle, Repeat2, Bookmark, MoreHorizontal, BadgeCheck, Share2, Loader2, X } from "lucide-react";
 import { formatDistanceToNowStrict } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -56,6 +56,11 @@ export function PostCard({ post }: { post: any }) {
   const [connections, setConnections] = useState<any[]>([]);
   const [sendingToId, setSendingToId] = useState<string | null>(null);
 
+  // Author Reposters Modal states
+  const [showRepostersModal, setShowRepostersModal] = useState(false);
+  const [reposters, setReposters] = useState<any[]>([]);
+  const [loadingRepostsModal, setLoadingRepostsModal] = useState(false);
+
   const isOwner = currentUser?.id === author?.id;
 
   useEffect(() => {
@@ -102,7 +107,25 @@ export function PostCard({ post }: { post: any }) {
   };
 
   const handleShare = async () => {
-    // Optimistic UI updates
+    if (isOwner) {
+      // Author clicking repost button opens the Reposters Popup Modal
+      setShowRepostersModal(true);
+      setLoadingRepostsModal(true);
+      try {
+        const res = await api.get<any>(`/posts/${post.id}/reposters`);
+        if (res.success && res.reposters) {
+          setReposters(res.reposters);
+        }
+      } catch (err) {
+        console.error("Failed to load reposters", err);
+        toast.error("Failed to load reposters list.");
+      } finally {
+        setLoadingRepostsModal(false);
+      }
+      return;
+    }
+
+    // Optimistic UI updates for non-owners
     setShared(!shared);
     setSharesCount((prev: number) => prev + (shared ? -1 : 1));
 
@@ -485,6 +508,54 @@ export function PostCard({ post }: { post: any }) {
                 )}
               </Button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reposters List Modal (For Post Author) */}
+      {showRepostersModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200 p-4">
+          <div className="w-full max-w-md rounded-xl border border-border bg-card p-5 shadow-xl animate-in fade-in-50 zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-border/50 pb-3 mb-4">
+              <div className="flex items-center gap-2 font-semibold text-base">
+                <Repeat2 className="h-4 w-4 text-emerald-400" />
+                <span>Reposted by ({sharesCount})</span>
+              </div>
+              <button
+                onClick={() => setShowRepostersModal(false)}
+                className="rounded-lg p-1 text-muted-foreground transition hover:bg-accent hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {loadingRepostsModal ? (
+              <div className="flex items-center justify-center py-8 text-muted-foreground gap-2">
+                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                <span className="text-sm">Loading reposters...</span>
+              </div>
+            ) : reposters.length === 0 ? (
+              <div className="py-8 text-center text-muted-foreground text-sm">
+                No developers have reposted this post yet.
+              </div>
+            ) : (
+              <div className="max-h-72 overflow-y-auto space-y-3 pr-1">
+                {reposters.map((u: any) => (
+                  <div key={u.id} className="flex items-center justify-between gap-3 p-2 rounded-lg transition hover:bg-accent/40">
+                    <Link to={`/profile/${u.id}`} onClick={() => setShowRepostersModal(false)} className="flex items-center gap-3 min-w-0 flex-1">
+                      <Avatar className="h-9 w-9 border border-border shrink-0">
+                        <AvatarImage src={u.avatarUrl || ""} />
+                        <AvatarFallback className="text-xs">{u.fullName[0]}</AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0 flex-1">
+                        <div className="font-semibold text-sm truncate hover:underline">{u.fullName}</div>
+                        <div className="text-xs text-muted-foreground truncate">{u.headline}</div>
+                      </div>
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -287,12 +287,95 @@ const deletePost = async (userId, postId) => {
   });
 };
 
+const getPostReposters = async (postId) => {
+  const shares = await prisma.share.findMany({
+    where: { postId },
+    orderBy: { createdAt: 'desc' },
+    include: {
+      user: {
+        select: {
+          id: true,
+          fullName: true,
+          profile: {
+            select: {
+              avatarUrl: true,
+              headline: true
+            }
+          }
+        }
+      }
+    }
+  });
+
+  return shares.map(s => ({
+    id: s.user.id,
+    fullName: s.user.fullName,
+    username: s.user.fullName.toLowerCase().replace(/\s+/g, ""),
+    avatarUrl: s.user.profile?.avatarUrl || null,
+    headline: s.user.profile?.headline || 'Developer',
+    repostedAt: s.createdAt
+  }));
+};
+
+const getPostById = async (postId, currentUserId = null) => {
+  const post = await prisma.post.findUnique({
+    where: { id: postId },
+    include: {
+      user: {
+        select: {
+          id: true,
+          fullName: true,
+          profile: {
+            select: {
+              headline: true,
+              avatarUrl: true
+            }
+          }
+        }
+      },
+      media: true,
+      likes: currentUserId ? {
+        where: { userId: currentUserId }
+      } : false,
+      shares: currentUserId ? {
+        where: { userId: currentUserId }
+      } : false,
+      _count: {
+        select: {
+          likes: true,
+          comments: true,
+          shares: true
+        }
+      }
+    }
+  });
+
+  if (!post) {
+    throw new Error('Post not found');
+  }
+
+  const liked = currentUserId ? (post.likes && post.likes.length > 0) : false;
+  const shared = currentUserId ? (post.shares && post.shares.length > 0) : false;
+  const { likes, shares, _count, ...rest } = post;
+
+  return {
+    ...rest,
+    liked,
+    shared,
+    likes: _count.likes,
+    comments: _count.comments,
+    shares: _count.shares
+  };
+};
+
 export {
   createPost,
   getFeedPosts,
+  getPostById,
   togglePostLike,
   logPostShare,
   addComment,
   getPostCommentsTree,
-  deletePost
+  deletePost,
+  getPostReposters
 };

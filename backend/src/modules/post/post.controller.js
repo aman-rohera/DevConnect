@@ -91,12 +91,40 @@ const deleteOne = async (req, res) => {
   }
 };
 
+const getReposters = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const reposters = await postService.getPostReposters(id);
+    res.json({ success: true, reposters });
+  } catch (error) {
+    console.error('Error fetching reposters:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch reposters' });
+  }
+};
+
+const getById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const currentUserId = req.user ? req.user.id : null;
+    const post = await postService.getPostById(id, currentUserId);
+    res.json({ success: true, post });
+  } catch (error) {
+    console.error('Error fetching post by ID:', error);
+    if (error.message === 'Post not found') {
+      return res.status(404).json({ success: false, message: error.message });
+    }
+    res.status(500).json({ success: false, message: 'Failed to fetch post' });
+  }
+};
+
 export {
   create,
   getFeed,
+  getById,
   toggleLike,
   share,
   createComment,
   getComments,
-  deleteOne
+  deleteOne,
+  getReposters
 };

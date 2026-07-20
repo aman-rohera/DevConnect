@@ -30,6 +30,25 @@ const authenticateToken = (req, res, next) => {
   }
 };
 
+const optionalAuthenticateToken = (req, res, next) => {
+  let token = req.cookies?.access_token;
+  
+  if (!token) {
+    const authHeader = req.headers['authorization'];
+    token = authHeader && authHeader.split(' ')[1];
+  }
+
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      req.user = decoded;
+    } catch (error) {
+      // Ignore token verification errors for optional authentication
+    }
+  }
+  next();
+};
+
 const authorizeRoles = (...roles) => {
   return (req, res, next) => {
     if (!req.user || !roles.includes(req.user.role)) {
@@ -42,4 +61,4 @@ const authorizeRoles = (...roles) => {
   };
 };
 
-export { authenticateToken, authorizeRoles };
+export { authenticateToken, optionalAuthenticateToken, authorizeRoles };

@@ -64,7 +64,11 @@ export const Profile = () => {
     try {
       const response = await api.get<any>("/posts/feed", { token });
       if (response.success && response.posts) {
-        const filtered = response.posts.filter((p: any) => p.user?.id === userId);
+        // Filter posts: original posts created by this user OR posts reposted by this user
+        const targetId = userId;
+        const filtered = response.posts.filter(
+          (p: any) => (p.user?.id === targetId && !p.repostedBy) || p.repostedBy?.id === targetId
+        );
         setPosts(filtered);
       }
     } catch (err) {

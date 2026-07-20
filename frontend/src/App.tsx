@@ -23,6 +23,7 @@ import { ChatDataProvider } from "@/lib/chat-data";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
 import { Loader2 } from "lucide-react";
+import { PostDetailPage } from "@/pages/PostDetailPage";
 import "@/styles.css";
 
 /**
@@ -130,6 +131,10 @@ function App() {
                 <Route
                   path="/reset-password"
                   element={<ResetPassword />}
+                />
+                <Route
+                  path="/posts/:id"
+                  element={<PostDetailPage />}
                 />
 
                 {/* Secure Internal Routes */}

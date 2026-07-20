@@ -185,5 +185,26 @@ describe('Posts API Endpoint Tests', () => {
       expect(res.status).toBe(403);
       expect(res.body.success).toBe(false);
     });
+
+    it('should retrieve list of users who reposted a post', async () => {
+      const owner = await createUser({ fullName: 'Owner User' });
+      const reposter = await createUser({ fullName: 'Reposter User' });
+      const post = await createPost(owner.id, { content: 'Shared post' });
+
+      // Share/repost post by reposter
+      await request(app)
+        .post(`/api/posts/${post.id}/share`)
+        .set(getAuthHeaders(reposter));
+
+      // Fetch reposters list
+      const res = await request(app)
+        .get(`/api/posts/${post.id}/reposters`)
+        .set(getAuthHeaders(owner));
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.reposters.length).toBe(1);
+      expect(res.body.reposters[0].fullName).toBe('Reposter User');
+    });
   });
 });
