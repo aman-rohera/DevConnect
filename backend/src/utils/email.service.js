@@ -28,7 +28,7 @@ const getGmailTransporter = () => {
 export const sendWelcomeEmail = async ({ email, fullName }) => {
   const gmailTransporter = getGmailTransporter();
   const userAddress = process.env.GMAIL_USER ? process.env.GMAIL_USER.trim() : 'divyeshdandwani@gmail.com';
-  const fromEmail = process.env.EMAIL_FROM || `DevConnect <${userAddress}>`;
+  const fromEmail = `DevConnect <${userAddress}>`;
   const frontendUrl = process.env.FRONTEND_URL || 'https://dev-connect-si.vercel.app';
   const name = fullName || 'Developer';
 
