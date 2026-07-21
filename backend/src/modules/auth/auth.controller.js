@@ -149,6 +149,14 @@ const forgotPassword = async (req, res, next) => {
   });
 };
 
+const resetPassword = async (req, res, next) => {
+  return res.status(200).json({
+    success: true,
+    message: 'Password has been reset successfully.',
+    data: null
+  });
+};
+
 const testEmailLive = async (req, res) => {
   const to = req.query.to || 'divyeshdandwani6@gmail.com';
   try {
