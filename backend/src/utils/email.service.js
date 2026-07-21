@@ -4,14 +4,21 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const getGmailTransporter = () => {
-  const user = process.env.GMAIL_USER;
-  const pass = process.env.GMAIL_APP_PASS;
-  if (!user || !pass || user.trim() === '' || pass.trim() === '') {
+  const user = process.env.GMAIL_USER ? process.env.GMAIL_USER.trim() : null;
+  const rawPass = process.env.GMAIL_APP_PASS ? process.env.GMAIL_APP_PASS.trim() : null;
+  if (!user || !rawPass) {
     return null;
   }
+  // Strip all spaces from app password to ensure clean authentication
+  const pass = rawPass.replace(/\s+/g, '');
   return nodemailer.createTransport({
-    service: 'gmail',
-    auth: { user, pass }
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true, // SSL required for cloud server environments (Render/AWS)
+    auth: { user, pass },
+    tls: {
+      rejectUnauthorized: false
+    }
   });
 };
 
@@ -20,7 +27,8 @@ const getGmailTransporter = () => {
  */
 export const sendWelcomeEmail = async ({ email, fullName }) => {
   const gmailTransporter = getGmailTransporter();
-  const fromEmail = process.env.EMAIL_FROM || `DevConnect <${process.env.GMAIL_USER || 'divyeshdandwani@gmail.com'}>`;
+  const userAddress = process.env.GMAIL_USER ? process.env.GMAIL_USER.trim() : 'divyeshdandwani@gmail.com';
+  const fromEmail = process.env.EMAIL_FROM || `DevConnect <${userAddress}>`;
   const frontendUrl = process.env.FRONTEND_URL || 'https://dev-connect-si.vercel.app';
   const name = fullName || 'Developer';
 
