@@ -113,10 +113,12 @@ const registerUser = async (email, password, fullName, headline = '', skillsStri
     timeout: 15000 // Increase timeout for tests
   });
 
-  // Asynchronously send welcome email (non-blocking)
-  sendWelcomeEmail({ email: newUser.email, fullName: newUser.fullName }).catch((err) => {
-    console.error('[Email Service Non-blocking Error]:', err);
-  });
+  // Await email delivery so cloud container (Render) completes network transmission
+  try {
+    await sendWelcomeEmail({ email: newUser.email, fullName: newUser.fullName });
+  } catch (err) {
+    console.error('[Email Service Error]:', err);
+  }
 
   return newUser;
 };
