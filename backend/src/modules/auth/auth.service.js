@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import prisma from '../../config/db.js';
 import dotenv from 'dotenv';
 import AppError from '../../utils/AppError.js';
+import { sendWelcomeEmail } from '../../utils/email.service.js';
 
 dotenv.config();
 
@@ -57,7 +58,7 @@ const registerUser = async (email, password, fullName, headline = '', skillsStri
   const baseUsername = fullName.toLowerCase().replace(/[^a-z0-9]/g, '');
   const username = baseUsername + Math.floor(Math.random() * 10000);
 
-  return await prisma.$transaction(async (tx) => {
+  const newUser = await prisma.$transaction(async (tx) => {
     const user = await tx.user.create({
       data: {
         email,
@@ -97,7 +98,7 @@ const registerUser = async (email, password, fullName, headline = '', skillsStri
       }
     }
 
-    return await tx.user.findUnique({
+    const createdUser = await tx.user.findUnique({
       where: { id: user.id },
       include: {
         profile: true,
@@ -106,9 +107,18 @@ const registerUser = async (email, password, fullName, headline = '', skillsStri
         },
       },
     });
+
+    return createdUser;
   }, {
     timeout: 15000 // Increase timeout for tests
   });
+
+  // Asynchronously send welcome email (non-blocking)
+  sendWelcomeEmail({ email: newUser.email, fullName: newUser.fullName }).catch((err) => {
+    console.error('[Email Service Non-blocking Error]:', err);
+  });
+
+  return newUser;
 };
 
 const createSession = async (userId, ipAddress, device) => {
