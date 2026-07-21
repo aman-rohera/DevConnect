@@ -6,19 +6,18 @@ dotenv.config();
 const getGmailTransporter = () => {
   const user = process.env.GMAIL_USER ? process.env.GMAIL_USER.trim() : null;
   const rawPass = process.env.GMAIL_APP_PASS ? process.env.GMAIL_APP_PASS.trim() : null;
+  
   if (!user || !rawPass) {
+    console.warn('[Email Service Warning] GMAIL_USER or GMAIL_APP_PASS environment variable is missing on this server!');
     return null;
   }
+  
   // Strip all spaces from app password to ensure clean authentication
   const pass = rawPass.replace(/\s+/g, '');
+
   return nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true, // SSL required for cloud server environments (Render/AWS)
-    auth: { user, pass },
-    tls: {
-      rejectUnauthorized: false
-    }
+    service: 'gmail',
+    auth: { user, pass }
   });
 };
 
@@ -107,22 +106,22 @@ export const sendWelcomeEmail = async ({ email, fullName }) => {
   `;
 
   try {
-    if (gmailTransporter) {
-      const info = await gmailTransporter.sendMail({
-        from: fromEmail,
-        to: email,
-        subject: `Welcome to DevConnect, ${name}! 🚀`,
-        html: htmlContent,
-      });
-
-      console.log(`[Email Service Success - Gmail SMTP] Welcome email successfully sent to ${email}. MessageId: ${info.messageId}`);
-      return { success: true, messageId: info.messageId, provider: 'gmail' };
+    if (!gmailTransporter) {
+      console.log(`[Email Service Simulation] GMAIL_USER / GMAIL_APP_PASS not configured in process.env. Welcome email to ${email} simulated.`);
+      return { success: true, simulated: true, reason: 'GMAIL_USER or GMAIL_APP_PASS missing in process.env' };
     }
 
-    console.log(`[Email Service] GMAIL_USER / GMAIL_APP_PASS not configured in .env. Welcome email to ${email} simulated successfully.`);
-    return { success: true, simulated: true };
+    const info = await gmailTransporter.sendMail({
+      from: fromEmail,
+      to: email,
+      subject: `Welcome to DevConnect, ${name}! 🚀`,
+      html: htmlContent,
+    });
+
+    console.log(`[Email Service Success - Gmail SMTP] Welcome email successfully sent to ${email}. MessageId: ${info.messageId}`);
+    return { success: true, messageId: info.messageId, provider: 'gmail' };
   } catch (err) {
     console.error(`[Email Service Exception] Failed to send welcome email to ${email}:`, err?.message || err);
-    return { success: false, error: err?.message };
+    return { success: false, error: err?.message || String(err) };
   }
 };

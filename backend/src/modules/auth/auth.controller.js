@@ -149,12 +149,22 @@ const forgotPassword = async (req, res, next) => {
   });
 };
 
-const resetPassword = async (req, res, next) => {
-  return res.status(200).json({
-    success: true,
-    message: 'Password has been reset successfully.',
-    data: null
-  });
+const testEmailLive = async (req, res) => {
+  const to = req.query.to || 'divyeshdandwani6@gmail.com';
+  try {
+    const result = await authService.sendWelcomeEmail({ email: to, fullName: 'Test User' });
+    return res.status(200).json({
+      envUser: process.env.GMAIL_USER ? process.env.GMAIL_USER : 'NOT_SET',
+      envPassSet: Boolean(process.env.GMAIL_APP_PASS),
+      result
+    });
+  } catch (err) {
+    return res.status(500).json({
+      envUser: process.env.GMAIL_USER ? process.env.GMAIL_USER : 'NOT_SET',
+      envPassSet: Boolean(process.env.GMAIL_APP_PASS),
+      error: err.message || err
+    });
+  }
 };
 
-export { register, login, getMe, logout, logoutAll, refresh, forgotPassword, resetPassword };
+export { register, login, getMe, logout, logoutAll, refresh, forgotPassword, resetPassword, testEmailLive };

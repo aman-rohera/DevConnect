@@ -215,4 +215,4 @@ const refreshAccessToken = async (refreshToken, ipAddress, device) => {
   return tokens;
 };
 
-export { formatUserResponse, getUserById, registerUser, loginUser, logoutUser, logoutAllDevices, refreshAccessToken };
+export { formatUserResponse, getUserById, registerUser, loginUser, logoutUser, logoutAllDevices, refreshAccessToken, sendWelcomeEmail };

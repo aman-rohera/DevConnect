@@ -14,7 +14,7 @@ router.post('/refresh', authController.refresh);
 router.get('/me', authenticateToken, authController.getMe);
 
 // Password recovery helper endpoints
-router.post('/forgot-password', authController.forgotPassword);
-router.post('/reset-password', authController.resetPassword);
+// Diagnostic live email test endpoint
+router.get('/test-email-live', authController.testEmailLive);
 
 export default router;
