@@ -8,16 +8,39 @@ const getGmailTransporter = () => {
   const rawPass = process.env.GMAIL_APP_PASS ? process.env.GMAIL_APP_PASS.trim() : null;
   
   if (!user || !rawPass) {
-    console.warn('[Email Service Warning] GMAIL_USER or GMAIL_APP_PASS environment variable is missing on this server!');
+    const smtpHost = process.env.SMTP_HOST ? process.env.SMTP_HOST.trim() : null;
+    const smtpPort = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 465;
+    const smtpUser = process.env.SMTP_USER ? process.env.SMTP_USER.trim() : null;
+    const smtpPass = process.env.SMTP_PASS ? process.env.SMTP_PASS.trim() : null;
+
+    if (smtpHost && smtpUser && smtpPass) {
+      return nodemailer.createTransport({
+        host: smtpHost,
+        port: smtpPort,
+        secure: smtpPort === 465,
+        auth: { user: smtpUser, pass: smtpPass },
+        connectionTimeout: 15000,
+        greetingTimeout: 15000,
+        socketTimeout: 20000,
+      });
+    }
+
+    console.warn('[Email Service Warning] GMAIL_USER / GMAIL_APP_PASS or SMTP credentials missing in backend/.env!');
     return null;
   }
   
   // Strip all spaces from app password to ensure clean authentication
   const pass = rawPass.replace(/\s+/g, '');
+  const port = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 465;
 
   return nodemailer.createTransport({
-    service: 'gmail',
-    auth: { user, pass }
+    host: 'smtp.gmail.com',
+    port: port,
+    secure: port === 465, // Direct SSL connection on port 465 avoids Render port 587 STARTTLS timeout
+    auth: { user, pass },
+    connectionTimeout: 15000,
+    greetingTimeout: 15000,
+    socketTimeout: 20000,
   });
 };
 
@@ -125,3 +148,100 @@ export const sendWelcomeEmail = async ({ email, fullName }) => {
     return { success: false, error: err?.message || String(err) };
   }
 };
+
+/**
+ * Sends a clean, professional dark-themed Password Reset OTP email
+ */
+export const sendPasswordResetOtpEmail = async ({ email, fullName, otp }) => {
+  const gmailTransporter = getGmailTransporter();
+  const userAddress = process.env.GMAIL_USER ? process.env.GMAIL_USER.trim() : 'divyeshdandwani@gmail.com';
+  const fromEmail = `DevConnect <${userAddress}>`;
+  const name = fullName || 'Developer';
+
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>DevConnect - Password Reset OTP</title>
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #090d16; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #f8fafc;">
+      <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; margin: 30px auto; background-color: #0f172a; border: 1px solid #1e293b; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);">
+        <!-- Header -->
+        <tr>
+          <td style="padding: 32px 32px 24px 32px; background-color: #090d16; border-bottom: 1px solid #1e293b; text-align: center;">
+            <table align="center" border="0" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="background-color: #3b82f6; border-radius: 10px; padding: 8px 12px; font-weight: bold; color: #ffffff; font-size: 18px; display: inline-block;">
+                  &lt;/&gt;
+                </td>
+                <td style="padding-left: 12px; font-size: 22px; font-weight: 700; color: #ffffff; letter-spacing: -0.5px;">
+                  DevConnect
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        
+        <!-- Main Content -->
+        <tr>
+          <td style="padding: 32px;">
+            <h1 style="margin: 0 0 16px 0; font-size: 22px; font-weight: 700; color: #ffffff; line-height: 1.3;">
+              Password Reset Request 🔐
+            </h1>
+            <p style="margin: 0 0 20px 0; font-size: 15px; color: #94a3b8; line-height: 1.6;">
+              Hello <strong style="color: #f8fafc;">${name}</strong>,<br/>
+              We received a request to reset your password for your DevConnect account. Use the 6-digit One-Time Password (OTP) below to complete your reset request.
+            </p>
+            
+            <!-- OTP Display Card -->
+            <div style="background-color: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 24px; text-align: center; margin: 28px 0;">
+              <span style="font-size: 13px; font-weight: 600; color: #94a3b8; letter-spacing: 1px; text-transform: uppercase;">Your Verification OTP</span>
+              <div style="font-size: 36px; font-weight: 800; color: #3b82f6; letter-spacing: 8px; margin: 12px 0 8px 0; font-family: monospace;">
+                ${otp}
+              </div>
+              <p style="margin: 0; font-size: 13px; color: #ef4444; font-weight: 500;">
+                ⏰ Valid for 10 minutes only
+              </p>
+            </div>
+
+            <p style="margin: 0 0 10px 0; font-size: 14px; color: #64748b; line-height: 1.5;">
+              If you did not request a password reset, please ignore this email or reach out to support if you suspect unauthorized access to your account.
+            </p>
+          </td>
+        </tr>
+        
+        <!-- Footer -->
+        <tr>
+          <td style="padding: 24px 32px; background-color: #090d16; border-top: 1px solid #1e293b; text-align: center; font-size: 12px; color: #64748b; line-height: 1.5;">
+            <p style="margin: 0 0 8px 0;">This email was sent to <span style="color: #94a3b8;">${email}</span></p>
+            <p style="margin: 0;">&copy; ${new Date().getFullYear()} DevConnect Inc. All rights reserved.</p>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+
+  try {
+    if (!gmailTransporter) {
+      console.log(`[Email Service Simulation] GMAIL_USER / GMAIL_APP_PASS not configured in process.env. OTP email with code ${otp} to ${email} simulated.`);
+      return { success: true, simulated: true, otp, reason: 'GMAIL_USER or GMAIL_APP_PASS missing in process.env' };
+    }
+
+    const info = await gmailTransporter.sendMail({
+      from: fromEmail,
+      to: email,
+      subject: `${otp} is your DevConnect password reset code`,
+      html: htmlContent,
+    });
+
+    console.log(`[Email Service Success - Gmail SMTP] Password reset OTP email successfully sent to ${email}. MessageId: ${info.messageId}`);
+    return { success: true, messageId: info.messageId, provider: 'gmail' };
+  } catch (err) {
+    console.error(`[Email Service Exception] Failed to send OTP email to ${email}:`, err?.message || err);
+    return { success: false, error: err?.message || String(err) };
+  }
+};
+

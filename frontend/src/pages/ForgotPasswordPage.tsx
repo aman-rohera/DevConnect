@@ -1,61 +1,58 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Check } from "lucide-react";
+import { Loader2, KeyRound, Mail, ArrowRight } from "lucide-react";
 import { AuthLayout } from "@/components/layout/AuthLayout";
 import { toast } from "sonner";
 
 export const ForgotPasswordPage: React.FC = () => {
   const { forgotPassword } = useAuth();
+  const navigate = useNavigate();
+
   const [email, setEmail] = useState("");
-  const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const submit = async (e: React.FormEvent) => {
+  const handleRequestOtp = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email) {
+      setError("Please enter your email address.");
+      return;
+    }
     setLoading(true);
     setError("");
 
     try {
-      await forgotPassword(email);
-      setSent(true);
-      toast.success("Password reset email sent!");
+      const res = await forgotPassword(email);
+      if (res?.simulated) {
+        toast.warning("SMTP credentials missing in backend/.env. Configure GMAIL_USER & GMAIL_APP_PASS to receive live emails.");
+      } else {
+        toast.success(`OTP code sent to ${email}! Check your inbox.`);
+      }
+      // Navigate to dedicated Verify OTP page
+      navigate(`/verify-otp?email=${encodeURIComponent(email)}`, { state: { email } });
     } catch (err: any) {
       console.error("Forgot password request failed", err);
-      setError(err.message || "Failed to send reset link.");
-      toast.error(err.message || "Failed to send password reset email.");
+      setError(err.message || "Failed to send OTP code.");
+      toast.error(err.message || "Failed to send OTP code.");
     } finally {
       setLoading(false);
     }
   };
 
-  if (sent) {
-    return (
-      <AuthLayout>
-        <div className="text-center">
-          <div className="mx-auto grid h-12 w-12 place-items-center rounded-xl border border-border bg-success/10 mb-4">
-            <Check className="h-5 w-5 text-success" />
-          </div>
-          <h1 className="text-xl font-semibold text-gradient">Check your email</h1>
-          <p className="mt-1 text-sm text-muted-foreground">We sent a password reset link. It expires in 30 minutes.</p>
-          <div className="mt-6">
-            <Button asChild variant="outline">
-              <Link to="/login">Back to sign in</Link>
-            </Button>
-          </div>
-        </div>
-      </AuthLayout>
-    );
-  }
-
   return (
     <AuthLayout>
-      <h1 className="text-2xl font-semibold tracking-tight text-gradient">Reset password</h1>
-      <p className="mt-1 text-sm text-muted-foreground">Enter your email and we'll send a reset link.</p>
+      <div className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+        <KeyRound className="h-3.5 w-3.5" /> Request Password Reset OTP
+      </div>
+
+      <h1 className="text-2xl font-semibold tracking-tight text-gradient">Forgot Password</h1>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Enter your registered email address below. We'll send a 6-digit OTP verification code to your inbox using Nodemailer.
+      </p>
 
       {error && (
         <div className="mt-4 p-3 rounded-lg border border-destructive/20 bg-destructive/10 text-xs text-destructive">
@@ -63,25 +60,38 @@ export const ForgotPasswordPage: React.FC = () => {
         </div>
       )}
 
-      <form onSubmit={submit} className="mt-6 space-y-3">
+      <form onSubmit={handleRequestOtp} className="mt-6 space-y-4">
         <div className="space-y-1.5">
-          <Label htmlFor="email">Email</Label>
-          <Input 
-            id="email" 
-            type="email" 
-            required 
-            autoComplete="email" 
-            placeholder="you@developer.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
+          <Label htmlFor="email">Registered Email Address</Label>
+          <div className="relative">
+            <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input 
+              id="email" 
+              type="email" 
+              required 
+              autoComplete="email" 
+              placeholder="you@developer.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="pl-9"
+              autoFocus
+            />
+          </div>
         </div>
+
         <Button type="submit" className="w-full" disabled={loading}>
-          {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Sending</> : "Send reset link"}
+          {loading ? (
+            <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Sending OTP Email...</>
+          ) : (
+            <span className="flex items-center justify-center gap-1.5">
+              Send OTP Code <ArrowRight className="h-4 w-4" />
+            </span>
+          )}
         </Button>
       </form>
+
       <p className="mt-6 text-center text-sm text-muted-foreground">
-        Remembered it? <Link to="/login" className="font-medium text-foreground hover:underline">Sign in</Link>
+        Remembered your password? <Link to="/login" className="font-medium text-foreground hover:underline">Sign in</Link>
       </p>
     </AuthLayout>
   );

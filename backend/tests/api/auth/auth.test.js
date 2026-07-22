@@ -125,4 +125,97 @@ describe('Auth API Endpoint Tests', () => {
       expect(response.body.message).toContain('Invalid or expired');
     });
   });
+
+  describe('OTP Password Recovery Flow', () => {
+    it('should generate OTP and send email for registered user', async () => {
+      const user = await createUser({ email: 'otpuser@devconnect.com', password: 'OldPassword123' });
+
+      const forgotRes = await request(app)
+        .post('/api/auth/forgot-password')
+        .send({ email: user.email });
+
+      expect(forgotRes.status).toBe(200);
+      expect(forgotRes.body.success).toBe(true);
+      expect(forgotRes.body.message).toContain('OTP code');
+
+      const otpRecord = await prisma.passwordResetOtp.findFirst({
+        where: { email: user.email },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      expect(otpRecord).not.toBeNull();
+      expect(otpRecord.otp).toHaveLength(6);
+      expect(otpRecord.used).toBe(false);
+    });
+
+    it('should verify valid OTP and reject invalid OTP', async () => {
+      const user = await createUser({ email: 'verifyotp@devconnect.com', password: 'OldPassword123' });
+
+      const forgotRes = await request(app)
+        .post('/api/auth/forgot-password')
+        .send({ email: user.email });
+      expect(forgotRes.status).toBe(200);
+
+      const otpRecord = await prisma.passwordResetOtp.findFirst({
+        where: { email: user.email },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      expect(otpRecord).not.toBeNull();
+
+      // Invalid OTP
+      const invalidRes = await request(app)
+        .post('/api/auth/verify-otp')
+        .send({ email: user.email, otp: '000000' });
+      expect(invalidRes.status).toBe(400);
+
+      // Valid OTP
+      const validRes = await request(app)
+        .post('/api/auth/verify-otp')
+        .send({ email: user.email, otp: otpRecord.otp });
+      expect(validRes.status).toBe(200);
+      expect(validRes.body.success).toBe(true);
+    });
+
+    it('should reset password with valid OTP and allow login with new password', async () => {
+      const user = await createUser({ email: 'resetuser@devconnect.com', password: 'OldPassword123' });
+
+      const forgotRes = await request(app)
+        .post('/api/auth/forgot-password')
+        .send({ email: user.email });
+      expect(forgotRes.status).toBe(200);
+
+      const otpRecord = await prisma.passwordResetOtp.findFirst({
+        where: { email: user.email },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      expect(otpRecord).not.toBeNull();
+
+      const resetRes = await request(app)
+        .post('/api/auth/reset-password')
+        .send({
+          email: user.email,
+          otp: otpRecord.otp,
+          newPassword: 'NewPassword123!',
+        });
+
+      expect(resetRes.status).toBe(200);
+      expect(resetRes.body.success).toBe(true);
+
+      // Verify old password fails
+      const oldLoginRes = await request(app)
+        .post('/api/auth/login')
+        .send({ email: user.email, password: 'OldPassword123' });
+      expect(oldLoginRes.status).toBe(401);
+
+      // Verify new password succeeds
+      const newLoginRes = await request(app)
+        .post('/api/auth/login')
+        .send({ email: user.email, password: 'NewPassword123!' });
+      expect(newLoginRes.status).toBe(200);
+      expect(newLoginRes.body.success).toBe(true);
+    });
+  });
 });
+

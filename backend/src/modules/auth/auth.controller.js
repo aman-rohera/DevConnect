@@ -142,19 +142,54 @@ const refresh = async (req, res, next) => {
 };
 
 const forgotPassword = async (req, res, next) => {
-  return res.status(200).json({
-    success: true,
-    message: 'Reset password link sent. Please check your inbox.',
-    data: null
-  });
+  const { email } = req.body;
+  try {
+    const result = await authService.generatePasswordResetOtp(email);
+    const isSimulated = result.simulated;
+    const message = isSimulated
+      ? `[Demo Mode] OTP code generated: ${result.otp}. (Configure GMAIL_USER & GMAIL_APP_PASS in backend/.env for real SMTP delivery)`
+      : 'OTP code has been sent to your email. Please check your inbox.';
+
+    return res.status(200).json({
+      success: true,
+      message,
+      data: {
+        email: result.email,
+        simulated: isSimulated,
+        devOtp: result.otp
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const verifyOtp = async (req, res, next) => {
+  const { email, otp } = req.body;
+  try {
+    const result = await authService.verifyPasswordResetOtp(email, otp);
+    return res.status(200).json({
+      success: true,
+      message: 'OTP verified successfully.',
+      data: result
+    });
+  } catch (error) {
+    next(error);
+  }
 };
 
 const resetPassword = async (req, res, next) => {
-  return res.status(200).json({
-    success: true,
-    message: 'Password has been reset successfully.',
-    data: null
-  });
+  const { email, otp, newPassword } = req.body;
+  try {
+    await authService.resetPasswordWithOtp(email, otp, newPassword);
+    return res.status(200).json({
+      success: true,
+      message: 'Password has been reset successfully. You can now log in with your new password.',
+      data: null
+    });
+  } catch (error) {
+    next(error);
+  }
 };
 
 const testEmailLive = async (req, res) => {
@@ -175,4 +210,5 @@ const testEmailLive = async (req, res) => {
   }
 };
 
-export { register, login, getMe, logout, logoutAll, refresh, forgotPassword, resetPassword, testEmailLive };
+export { register, login, getMe, logout, logoutAll, refresh, forgotPassword, verifyOtp, resetPassword, testEmailLive };
+

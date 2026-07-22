@@ -71,7 +71,7 @@ export const Login: React.FC = () => {
         <div className="space-y-1.5">
           <div className="flex items-baseline justify-between">
             <Label htmlFor="password">Password</Label>
-            <Link to="/reset-password" className="text-xs text-primary hover:underline">Forgot?</Link>
+            <Link to="/forgot-password" className="text-xs text-primary hover:underline">Forgot Password?</Link>
           </div>
           <Input 
             id="password" 

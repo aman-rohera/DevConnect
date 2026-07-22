@@ -11,8 +11,9 @@ interface AuthContextType {
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, fullName: string, headline?: string, skills?: string) => Promise<void>;
-  forgotPassword: (email: string) => Promise<void>;
-  resetPassword: (password: string) => Promise<void>;
+  forgotPassword: (email: string) => Promise<{ email?: string; simulated?: boolean; devOtp?: string } | undefined>;
+  verifyOtp: (email: string, otp: string) => Promise<{ valid?: boolean } | undefined>;
+  resetPassword: (email: string, otp: string, newPassword: string) => Promise<void>;
   logout: () => void;
   clearError: () => void;
   refreshUser: () => Promise<void>;
@@ -44,17 +45,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Restore session on application load
   useEffect(() => {
     const restoreSession = async () => {
+      const storedToken = localStorage.getItem('dc_token');
+      const hasCookie = document.cookie.includes('access_token');
+
+      // Skip endpoint check if no token or auth cookie exists to prevent unnecessary 401 console warning
+      if (!storedToken && !hasCookie) {
+        setUser(null);
+        setIsLoading(false);
+        return;
+      }
+
       try {
         const response = await api.get<ApiResponse<{ user: User }>>('/auth/me');
         if (response.success && response.data.user) {
           setUser(response.data.user);
-          const storedToken = localStorage.getItem('dc_token');
           setToken(storedToken || 'cookie-based');
         } else {
           setUser(null);
         }
       } catch (err) {
-        // Expected when user is not logged in (no cookies or invalid)
+        // Expected when user token is invalid or session expired
         setUser(null);
       } finally {
         setIsLoading(false);
@@ -129,10 +139,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setIsLoading(true);
     setError(null);
     try {
-      const response = await api.post<ApiResponse<null>>('/auth/forgot-password', { email });
+      const response = await api.post<ApiResponse<{ email?: string; simulated?: boolean; devOtp?: string }>>('/auth/forgot-password', { email });
       if (!response.success) {
         throw new Error(response.message || 'Failed to send password reset email.');
       }
+      return response.data;
     } catch (err: any) {
       let friendlyMessage = err.message || 'Failed to send password reset email. Please try again.';
       if (err.message && err.message.toLowerCase().includes('rate limit')) {
@@ -145,12 +156,30 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Reset password handler
-  const resetPassword = async (password: string) => {
+  // Verify OTP handler
+  const verifyOtp = async (email: string, otp: string) => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await api.post<ApiResponse<null>>('/auth/reset-password', { password });
+      const response = await api.post<ApiResponse<{ valid: boolean }>>('/auth/verify-otp', { email, otp });
+      if (!response.success) {
+        throw new Error(response.message || 'Invalid or expired OTP code.');
+      }
+      return response.data;
+    } catch (err: any) {
+      setError(err.message || 'Invalid or expired OTP code.');
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Reset password handler
+  const resetPassword = async (email: string, otp: string, newPassword: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await api.post<ApiResponse<null>>('/auth/reset-password', { email, otp, newPassword });
       if (!response.success) {
         throw new Error(response.message || 'Failed to reset password.');
       }
@@ -188,6 +217,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         login,
         register,
         forgotPassword,
+        verifyOtp,
         resetPassword,
         logout,
         clearError,

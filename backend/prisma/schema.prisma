@@ -231,6 +231,18 @@ model UserSession {
   @@map("user_sessions")
 }
 
+model PasswordResetOtp {
+  id        String   @id @default(uuid()) @db.Uuid
+  email     String
+  otp       String
+  expiresAt DateTime @map("expires_at") @db.Timestamptz
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([email])
+  @@map("password_reset_otps")
+}
+
 // ==========================================
 // PROFILE ENTITIES
 // ==========================================

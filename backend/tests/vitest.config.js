@@ -10,6 +10,9 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, '../.env.test') });
 
 export default defineConfig({
+  ssr: {
+    external: ['nodemailer']
+  },
   test: {
     environment: 'node',
     globals: true,
@@ -17,6 +20,11 @@ export default defineConfig({
     hookTimeout: 45000,
     fileParallelism: false,
     maxWorkers: 1,
+    server: {
+      deps: {
+        external: ['nodemailer']
+      }
+    },
     poolOptions: {
       threads: {
         singleThread: true

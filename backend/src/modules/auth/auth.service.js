@@ -4,7 +4,7 @@ import crypto from 'crypto';
 import prisma from '../../config/db.js';
 import dotenv from 'dotenv';
 import AppError from '../../utils/AppError.js';
-import { sendWelcomeEmail } from '../../utils/email.service.js';
+import { sendWelcomeEmail, sendPasswordResetOtpEmail } from '../../utils/email.service.js';
 
 dotenv.config();
 
@@ -215,4 +215,125 @@ const refreshAccessToken = async (refreshToken, ipAddress, device) => {
   return tokens;
 };
 
-export { formatUserResponse, getUserById, registerUser, loginUser, logoutUser, logoutAllDevices, refreshAccessToken, sendWelcomeEmail };
+const generatePasswordResetOtp = async (email) => {
+  const user = await prisma.user.findUnique({
+    where: { email: email.toLowerCase() },
+  });
+
+  if (!user) {
+    throw new AppError('No account found with this email address.', 404);
+  }
+
+  if (user.isSuspended) {
+    throw new AppError('This account is suspended. Please contact support.', 403);
+  }
+
+  // Generate cryptographically secure 6-digit OTP
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
+
+  // Invalidate previous active OTPs for this email
+  await prisma.passwordResetOtp.updateMany({
+    where: { email: email.toLowerCase(), used: false },
+    data: { used: true },
+  });
+
+  // Store new OTP
+  await prisma.passwordResetOtp.create({
+    data: {
+      email: email.toLowerCase(),
+      otp,
+      expiresAt,
+    },
+  });
+
+  // Send OTP email via Nodemailer
+  const emailResult = await sendPasswordResetOtpEmail({
+    email: user.email,
+    fullName: user.fullName,
+    otp,
+  });
+
+  return {
+    email: user.email,
+    simulated: emailResult?.simulated || false,
+    otp: emailResult?.simulated ? otp : undefined,
+  };
+};
+
+const verifyPasswordResetOtp = async (email, otp) => {
+  const record = await prisma.passwordResetOtp.findFirst({
+    where: {
+      email: email.toLowerCase(),
+      otp,
+      used: false,
+      expiresAt: { gt: new Date() },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  if (!record) {
+    throw new AppError('Invalid or expired OTP code. Please request a new code.', 400);
+  }
+
+  return { valid: true };
+};
+
+const resetPasswordWithOtp = async (email, otp, newPassword) => {
+  const record = await prisma.passwordResetOtp.findFirst({
+    where: {
+      email: email.toLowerCase(),
+      otp,
+      used: false,
+      expiresAt: { gt: new Date() },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  if (!record) {
+    throw new AppError('Invalid or expired OTP code. Please request a new code.', 400);
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { email: email.toLowerCase() },
+  });
+
+  if (!user) {
+    throw new AppError('User account not found.', 404);
+  }
+
+  const salt = await bcrypt.genSalt(10);
+  const passwordHash = await bcrypt.hash(newPassword, salt);
+
+  // Update password and mark OTP as used in a transaction
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash },
+    }),
+    prisma.passwordResetOtp.update({
+      where: { id: record.id },
+      data: { used: true },
+    }),
+    prisma.userSession.deleteMany({
+      where: { userId: user.id },
+    }),
+  ]);
+
+  return { success: true };
+};
+
+export {
+  formatUserResponse,
+  getUserById,
+  registerUser,
+  loginUser,
+  logoutUser,
+  logoutAllDevices,
+  refreshAccessToken,
+  sendWelcomeEmail,
+  generatePasswordResetOtp,
+  verifyPasswordResetOtp,
+  resetPasswordWithOtp,
+};
+

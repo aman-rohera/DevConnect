@@ -4,7 +4,7 @@ import { Login } from "@/pages/Login";
 import { Register } from "@/pages/Register";
 import { Dashboard } from "@/pages/Dashboard";
 import { Profile } from "@/pages/Profile";
-import { ResetPassword } from "@/pages/ResetPassword";
+import { VerifyOtpPage } from "@/pages/VerifyOtpPage";
 import { ForgotPasswordPage } from "@/pages/ForgotPasswordPage";
 import { ExplorePage } from "@/pages/ExplorePage";
 import { ConnectionsPage } from "@/pages/ConnectionsPage";
@@ -129,8 +129,20 @@ function App() {
                   }
                 />
                 <Route
+                  path="/verify-otp"
+                  element={
+                    <GuestRoute>
+                      <VerifyOtpPage />
+                    </GuestRoute>
+                  }
+                />
+                <Route
                   path="/reset-password"
-                  element={<ResetPassword />}
+                  element={
+                    <GuestRoute>
+                      <VerifyOtpPage />
+                    </GuestRoute>
+                  }
                 />
                 <Route
                   path="/posts/:id"
