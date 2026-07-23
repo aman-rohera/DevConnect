@@ -36,6 +36,7 @@ export interface Profile {
   bio?: string;
   github_url?: string;
   avatar_url?: string;
+  resumeUrl?: string;
   updated_at: string;
   projects?: ProjectItem[];
   experience?: ExperienceItem[];
@@ -50,6 +51,7 @@ export interface User {
   fullName: string;
   headline?: string;
   avatarUrl?: string;
+  resumeUrl?: string;
   role?: string;
   profile?: Profile | null;
 }

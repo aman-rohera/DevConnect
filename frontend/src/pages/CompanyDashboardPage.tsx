@@ -287,12 +287,16 @@ export const CompanyDashboardPage = () => {
                     <div className="divide-y divide-border">
                       {job.applications?.map((app: any) => (
                         <div key={app.id} className="p-4 px-6 flex items-start gap-4 hover:bg-muted/50 transition">
-                          <Avatar className="h-10 w-10 shrink-0">
-                            <AvatarImage src={app.user?.profile?.avatarUrl} />
-                            <AvatarFallback>{app.user?.fullName?.[0]}</AvatarFallback>
-                          </Avatar>
+                          <Link to={`/profile/${app.user?.username || app.user?.id}`} className="shrink-0">
+                            <Avatar className="h-10 w-10 shrink-0 hover:opacity-80 transition-opacity">
+                              <AvatarImage src={app.user?.profile?.avatarUrl} />
+                              <AvatarFallback>{app.user?.fullName?.[0]}</AvatarFallback>
+                            </Avatar>
+                          </Link>
                           <div className="flex-1 min-w-0">
-                            <div className="font-medium truncate">{app.user?.fullName}</div>
+                            <Link to={`/profile/${app.user?.username || app.user?.id}`} className="hover:underline">
+                              <div className="font-medium truncate">{app.user?.fullName}</div>
+                            </Link>
                             <div className="text-xs text-muted-foreground truncate">{app.user?.email}</div>
                             <div className="mt-2 flex items-center gap-3">
                               <a href={app.resumeUrl} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1">

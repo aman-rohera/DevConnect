@@ -13,11 +13,14 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/services/api";
+import { useAuth } from "@/context/AuthContext";
 
 export const JobsPage = () => {
+  const { user } = useAuth();
   const [jobs, setJobs] = useState<any[]>([]);
   const [savedJobIds, setSavedJobIds] = useState<string[]>([]);
   const [applications, setApplications] = useState<any[]>([]);
+  const [hasCompany, setHasCompany] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [locationQuery, setLocationQuery] = useState("");
@@ -40,10 +43,18 @@ export const JobsPage = () => {
   });
 
   // Apply Form State
+  const defaultResumeName = user ? `${user.username}_resume.pdf` : "MyResume_DevConnect.pdf";
   const [applyForm, setApplyForm] = useState({
     coverLetter: "",
-    resumeName: "MyResume_DevConnect.pdf"
+    resumeName: defaultResumeName
   });
+
+  // Keep it updated if user loads late
+  useEffect(() => {
+    if (user && applyForm.resumeName === "MyResume_DevConnect.pdf") {
+      setApplyForm(prev => ({ ...prev, resumeName: `${user.username}_resume.pdf` }));
+    }
+  }, [user]);
 
   useEffect(() => {
     fetchJobsData();
@@ -51,10 +62,11 @@ export const JobsPage = () => {
 
   const fetchJobsData = async () => {
     try {
-      const [jobsRes, savedRes, appsRes] = await Promise.all([
+      const [jobsRes, savedRes, appsRes, companiesRes] = await Promise.all([
         api.get<any>("/jobs"),
         api.get<any>("/jobs/saved"),
-        api.get<any>("/jobs/applications")
+        api.get<any>("/jobs/applications"),
+        api.get<any>("/companies/mine").catch(() => ({ success: false, companies: [] }))
       ]);
 
       if (jobsRes.success && jobsRes.jobs) {
@@ -75,6 +87,10 @@ export const JobsPage = () => {
           appliedAt: app.createdAt,
           status: app.status
         })));
+      }
+
+      if (companiesRes.success && companiesRes.companies && companiesRes.companies.length > 0) {
+        setHasCompany(true);
       }
     } catch (err) {
       console.error("Failed to load jobs", err);
@@ -145,14 +161,15 @@ export const JobsPage = () => {
     if (!selectedJob) return;
 
     try {
+      const resumeUrl = user?.profile?.resumeUrl || user?.resumeUrl || "https://example.com/" + applyForm.resumeName;
       const res = await api.post<any>(`/jobs/${selectedJob.id}/apply`, {
-        resumeUrl: "https://example.com/" + applyForm.resumeName,
+        resumeUrl,
         coverLetter: applyForm.coverLetter
       });
       if (res.success) {
         toast.success(`Successfully applied to ${selectedJob.company?.name || selectedJob.company}!`);
         setApplyOpen(false);
-        setApplyForm({ coverLetter: "", resumeName: "MyResume_DevConnect.pdf" });
+        setApplyForm({ coverLetter: "", resumeName: defaultResumeName });
       }
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Failed to apply");
@@ -188,13 +205,14 @@ export const JobsPage = () => {
           <p className="mt-1 text-sm text-muted-foreground">Search open opportunities or post job vacancies to recruit talent.</p>
         </div>
 
-        <Dialog open={postOpen} onOpenChange={setPostOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2 self-start sm:self-auto">
-              <Plus className="h-4 w-4" />
-              <span>Post a Job</span>
-            </Button>
-          </DialogTrigger>
+        {hasCompany && (
+          <Dialog open={postOpen} onOpenChange={setPostOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2 self-start sm:self-auto">
+                <Plus className="h-4 w-4" />
+                <span>Post a Job</span>
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-xl p-6 border-border bg-surface max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Post a Job Opportunity</DialogTitle>
@@ -264,6 +282,7 @@ export const JobsPage = () => {
             </form>
           </DialogContent>
         </Dialog>
+        )}
       </div>
 
       {/* Tabs */}
@@ -417,10 +436,16 @@ export const JobsPage = () => {
                     <Button variant="outline" size="sm" className="flex-1" onClick={() => handleToggleSaveJob(selectedJob.id)}>
                       {savedJobIds.includes(selectedJob.id) ? "Saved" : "Save Job"}
                     </Button>
-                    <Dialog open={applyOpen} onOpenChange={setApplyOpen}>
-                      <DialogTrigger asChild>
-                        <Button size="sm" className="flex-1">Apply Now</Button>
-                      </DialogTrigger>
+                    
+                    {applications.some(app => app.jobId === selectedJob?.id) ? (
+                      <Button size="sm" className="flex-1" variant="secondary" disabled>
+                        <CheckCircle className="h-4 w-4 mr-1.5" /> Applied
+                      </Button>
+                    ) : (
+                      <Dialog open={applyOpen} onOpenChange={setApplyOpen}>
+                        <DialogTrigger asChild>
+                          <Button size="sm" className="flex-1">Apply Now</Button>
+                        </DialogTrigger>
                       <DialogContent className="max-w-md p-6 border-border bg-surface">
                         <DialogHeader>
                           <DialogTitle>Apply to {selectedJob.company?.name || "Company"}</DialogTitle>
@@ -436,7 +461,17 @@ export const JobsPage = () => {
                             <div className="flex items-center gap-2 border border-border rounded-lg bg-background p-2.5 text-xs text-muted-foreground font-mono">
                               <FileText className="h-4 w-4 text-primary shrink-0" />
                               <span className="truncate flex-1">{applyForm.resumeName}</span>
-                              <Button type="button" variant="outline" size="icon" className="h-6 w-6 text-[10px]">...</Button>
+                              {(user?.profile?.resumeUrl || user?.resumeUrl) && (
+                                <a 
+                                  href={user.profile?.resumeUrl || user.resumeUrl} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="text-[10px] text-primary hover:underline font-semibold tracking-wide mr-2"
+                                >
+                                  Preview
+                                </a>
+                              )}
+                              <Button type="button" variant="outline" size="icon" className="h-6 w-6 text-[10px]" title="Upload new resume">...</Button>
                             </div>
                           </div>
 
@@ -460,6 +495,7 @@ export const JobsPage = () => {
                         </form>
                       </DialogContent>
                     </Dialog>
+                    )}
                   </div>
                 </div>
               ) : (
