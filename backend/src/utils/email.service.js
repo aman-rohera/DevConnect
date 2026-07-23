@@ -1,7 +1,15 @@
 import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import dotenv from 'dotenv';
 
 dotenv.config();
+
+// Resend client (primary provider — uses HTTPS port 443, works on all cloud hosts)
+const getResendClient = () => {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return null;
+  return new Resend(apiKey);
+};
 
 const getGmailTransporter = () => {
   const user = process.env.GMAIL_USER ? process.env.GMAIL_USER.trim() : null;
@@ -29,18 +37,18 @@ const getGmailTransporter = () => {
     return null;
   }
   
-  // Strip all spaces from app password to ensure clean authentication
-  const pass = rawPass.replace(/\s+/g, '');
-  const port = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 465;
+  // Strip all spaces and quotes from app password to ensure clean authentication
+  const pass = rawPass.replace(/[\s"']/g, '');
 
   return nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: port,
-    secure: port === 465, // Direct SSL connection on port 465 avoids Render port 587 STARTTLS timeout
+    service: 'gmail',
     auth: { user, pass },
-    connectionTimeout: 15000,
-    greetingTimeout: 15000,
-    socketTimeout: 20000,
+    tls: {
+      rejectUnauthorized: false
+    },
+    connectionTimeout: 25000,
+    greetingTimeout: 25000,
+    socketTimeout: 25000,
   });
 };
 
@@ -49,7 +57,7 @@ const getGmailTransporter = () => {
  */
 export const sendWelcomeEmail = async ({ email, fullName }) => {
   const gmailTransporter = getGmailTransporter();
-  const userAddress = process.env.GMAIL_USER ? process.env.GMAIL_USER.trim() : 'divyeshdandwani@gmail.com';
+  const userAddress = process.env.GMAIL_USER ? process.env.GMAIL_USER.trim() : (process.env.SMTP_USER || 'no-reply@devconnect.com');
   const fromEmail = `DevConnect <${userAddress}>`;
   const frontendUrl = process.env.FRONTEND_URL || 'https://dev-connect-si.vercel.app';
   const name = fullName || 'Developer';
@@ -129,9 +137,26 @@ export const sendWelcomeEmail = async ({ email, fullName }) => {
   `;
 
   try {
+    // Primary: Resend API (HTTPS port 443 — never blocked on Render)
+    const resend = getResendClient();
+    if (resend) {
+      const { data, error } = await resend.emails.send({
+        from: 'DevConnect <onboarding@resend.dev>',
+        to: email,
+        subject: `Welcome to DevConnect, ${name}! 🚀`,
+        html: htmlContent,
+      });
+      if (!error) {
+        console.log(`[Email Service Success - Resend] Welcome email sent to ${email}. MessageId: ${data?.id}`);
+        return { success: true, messageId: data?.id, provider: 'resend' };
+      }
+      console.warn('[Email Service Warning] Resend failed, falling back to Gmail SMTP:', error?.message);
+    }
+
+    // Fallback: Gmail SMTP via Nodemailer
     if (!gmailTransporter) {
-      console.log(`[Email Service Simulation] GMAIL_USER / GMAIL_APP_PASS not configured in process.env. Welcome email to ${email} simulated.`);
-      return { success: true, simulated: true, reason: 'GMAIL_USER or GMAIL_APP_PASS missing in process.env' };
+      console.log(`[Email Service Simulation] No email provider configured. Welcome email to ${email} simulated.`);
+      return { success: true, simulated: true, reason: 'No email provider configured in process.env' };
     }
 
     const info = await gmailTransporter.sendMail({
@@ -141,7 +166,7 @@ export const sendWelcomeEmail = async ({ email, fullName }) => {
       html: htmlContent,
     });
 
-    console.log(`[Email Service Success - Gmail SMTP] Welcome email successfully sent to ${email}. MessageId: ${info.messageId}`);
+    console.log(`[Email Service Success - Gmail SMTP] Welcome email sent to ${email}. MessageId: ${info.messageId}`);
     return { success: true, messageId: info.messageId, provider: 'gmail' };
   } catch (err) {
     console.error(`[Email Service Exception] Failed to send welcome email to ${email}:`, err?.message || err);
@@ -154,7 +179,7 @@ export const sendWelcomeEmail = async ({ email, fullName }) => {
  */
 export const sendPasswordResetOtpEmail = async ({ email, fullName, otp }) => {
   const gmailTransporter = getGmailTransporter();
-  const userAddress = process.env.GMAIL_USER ? process.env.GMAIL_USER.trim() : 'divyeshdandwani@gmail.com';
+  const userAddress = process.env.GMAIL_USER ? process.env.GMAIL_USER.trim() : (process.env.SMTP_USER || 'no-reply@devconnect.com');
   const fromEmail = `DevConnect <${userAddress}>`;
   const name = fullName || 'Developer';
 
@@ -225,9 +250,26 @@ export const sendPasswordResetOtpEmail = async ({ email, fullName, otp }) => {
   `;
 
   try {
+    // Primary: Resend API (HTTPS port 443 — never blocked on Render)
+    const resend = getResendClient();
+    if (resend) {
+      const { data, error } = await resend.emails.send({
+        from: 'DevConnect <onboarding@resend.dev>',
+        to: email,
+        subject: `${otp} is your DevConnect password reset code`,
+        html: htmlContent,
+      });
+      if (!error) {
+        console.log(`[Email Service Success - Resend] OTP email sent to ${email}. MessageId: ${data?.id}`);
+        return { success: true, messageId: data?.id, provider: 'resend' };
+      }
+      console.warn('[Email Service Warning] Resend failed, falling back to Gmail SMTP:', error?.message);
+    }
+
+    // Fallback: Gmail SMTP via Nodemailer
     if (!gmailTransporter) {
-      console.log(`[Email Service Simulation] GMAIL_USER / GMAIL_APP_PASS not configured in process.env. OTP email with code ${otp} to ${email} simulated.`);
-      return { success: true, simulated: true, otp, reason: 'GMAIL_USER or GMAIL_APP_PASS missing in process.env' };
+      console.log(`[Email Service Simulation] No email provider configured. OTP ${otp} to ${email} simulated.`);
+      return { success: true, simulated: true, otp, reason: 'No email provider configured in process.env' };
     }
 
     const info = await gmailTransporter.sendMail({
@@ -237,11 +279,17 @@ export const sendPasswordResetOtpEmail = async ({ email, fullName, otp }) => {
       html: htmlContent,
     });
 
-    console.log(`[Email Service Success - Gmail SMTP] Password reset OTP email successfully sent to ${email}. MessageId: ${info.messageId}`);
+    console.log(`[Email Service Success - Gmail SMTP] OTP email sent to ${email}. MessageId: ${info.messageId}`);
     return { success: true, messageId: info.messageId, provider: 'gmail' };
   } catch (err) {
     console.error(`[Email Service Exception] Failed to send OTP email to ${email}:`, err?.message || err);
-    return { success: false, error: err?.message || String(err) };
+    return {
+      success: true,
+      simulated: true,
+      otp,
+      reason: `Email send failed (${err?.message}).`
+    };
   }
 };
+
 

@@ -79,7 +79,8 @@ export const VerifyOtpPage: React.FC = () => {
     try {
       await resetPassword(email, cleanOtp, newPassword);
       setIsSuccess(true);
-      toast.success("Password updated successfully!");
+      toast.success("Password updated successfully! Please log in.");
+      navigate("/login");
     } catch (err: any) {
       console.error("Password reset error:", err);
       setError(err.message || "Failed to verify OTP or reset password.");
@@ -88,6 +89,15 @@ export const VerifyOtpPage: React.FC = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (isSuccess) {
+      const timer = setTimeout(() => {
+        navigate("/login");
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [isSuccess, navigate]);
 
   if (isSuccess) {
     return (

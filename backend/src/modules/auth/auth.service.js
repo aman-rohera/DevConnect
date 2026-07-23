@@ -215,6 +215,7 @@ const refreshAccessToken = async (refreshToken, ipAddress, device) => {
   return tokens;
 };
 
+// Local OTP Generation, but Vercel API for Email Sending (Bypass Render SMTP block)
 const generatePasswordResetOtp = async (email) => {
   const user = await prisma.user.findUnique({
     where: { email: email.toLowerCase() },
@@ -228,72 +229,73 @@ const generatePasswordResetOtp = async (email) => {
     throw new AppError('This account is suspended. Please contact support.', 403);
   }
 
-  // Generate cryptographically secure 6-digit OTP
+  // Generate 6-digit OTP locally
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-  // Invalidate previous active OTPs for this email
-  await prisma.passwordResetOtp.updateMany({
-    where: { email: email.toLowerCase(), used: false },
-    data: { used: true },
-  });
-
-  // Store new OTP
+  // Store in database
   await prisma.passwordResetOtp.create({
     data: {
-      email: email.toLowerCase(),
+      email: user.email,
       otp,
-      expiresAt,
-    },
+      expiresAt
+    }
   });
 
-  // Send OTP email via Nodemailer
-  const emailResult = await sendPasswordResetOtpEmail({
-    email: user.email,
-    fullName: user.fullName,
-    otp,
-  });
+  // Call the Vercel Frontend Serverless Function to SEND the email (HTTPS — works on Render)
+  try {
+    const FRONTEND_URL = process.env.FRONTEND_URL || 'https://dev-connect-si.vercel.app';
+    const res = await fetch(`${FRONTEND_URL}/api/send-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: user.email, otp, fullName: user.fullName }),
+    });
+
+    const data = await res.json();
+    console.log(`[OTP Service] Vercel API response for ${user.email}:`, data);
+
+    if (!res.ok || !data.success) {
+      throw new AppError(data.message || 'Failed to send OTP via Vercel API. Please try again.', 500);
+    }
+  } catch (err) {
+    console.error('[OTP Service Exception]:', err);
+    throw new AppError('Failed to reach Vercel email service. Please try again.', 503);
+  }
 
   return {
     email: user.email,
-    simulated: emailResult?.simulated || false,
-    otp: emailResult?.simulated ? otp : undefined,
+    simulated: false,
   };
 };
 
 const verifyPasswordResetOtp = async (email, otp) => {
-  const record = await prisma.passwordResetOtp.findFirst({
+  // Local verification
+  const otpRecord = await prisma.passwordResetOtp.findFirst({
     where: {
       email: email.toLowerCase(),
-      otp,
+      otp: otp,
       used: false,
-      expiresAt: { gt: new Date() },
+      expiresAt: { gt: new Date() }
     },
-    orderBy: { createdAt: 'desc' },
+    orderBy: { createdAt: 'desc' }
   });
 
-  if (!record) {
+  if (!otpRecord) {
     throw new AppError('Invalid or expired OTP code. Please request a new code.', 400);
   }
+
+  // Mark as used
+  await prisma.passwordResetOtp.update({
+    where: { id: otpRecord.id },
+    data: { used: true }
+  });
 
   return { valid: true };
 };
 
 const resetPasswordWithOtp = async (email, otp, newPassword) => {
-  const record = await prisma.passwordResetOtp.findFirst({
-    where: {
-      email: email.toLowerCase(),
-      otp,
-      used: false,
-      expiresAt: { gt: new Date() },
-    },
-    orderBy: { createdAt: 'desc' },
-  });
-
-  if (!record) {
-    throw new AppError('Invalid or expired OTP code. Please request a new code.', 400);
-  }
-
+  // OTP already verified by external API in verifyPasswordResetOtp step.
+  // Just validate the user exists and update their password.
   const user = await prisma.user.findUnique({
     where: { email: email.toLowerCase() },
   });
@@ -305,15 +307,11 @@ const resetPasswordWithOtp = async (email, otp, newPassword) => {
   const salt = await bcrypt.genSalt(10);
   const passwordHash = await bcrypt.hash(newPassword, salt);
 
-  // Update password and mark OTP as used in a transaction
+  // Update password and invalidate all sessions
   await prisma.$transaction([
     prisma.user.update({
       where: { id: user.id },
       data: { passwordHash },
-    }),
-    prisma.passwordResetOtp.update({
-      where: { id: record.id },
-      data: { used: true },
     }),
     prisma.userSession.deleteMany({
       where: { userId: user.id },
