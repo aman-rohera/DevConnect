@@ -14,10 +14,4 @@ const getNeo4jSession = () => {
   return driver.session();
 };
 
-const closeNeo4jDriver = async () => {
-  await driver.close();
-};
-
-export default driver;
-
-export { getNeo4jSession, closeNeo4jDriver };
+export { getNeo4jSession };

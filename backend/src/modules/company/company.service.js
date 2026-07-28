@@ -155,12 +155,6 @@ const unfollowCompany = async (companyId, userId) => {
   });
 };
 
-const getDepartments = async (companyId) => {
-  return prisma.department.findMany({
-    where: { companyId }
-  });
-};
-
 const getMyCompanies = async (userId) => {
   const members = await prisma.companyMember.findMany({
     where: { userId, role: { in: ['OWNER', 'ADMIN'] } },
@@ -280,7 +274,6 @@ export {
   updateCompany, 
   followCompany, 
   unfollowCompany, 
-  getDepartments,
   getCompanyDashboard,
   inviteToCompany,
   getMyCompanies
