@@ -1,7 +1,8 @@
 import prisma from '../../config/db.js';
+import cache from '../../config/cache.js';
 
 const createPost = async (userId, content, imageUrl = null) => {
-  return prisma.post.create({
+  const result = await prisma.post.create({
     data: {
       userId,
       content,
@@ -23,9 +24,16 @@ const createPost = async (userId, content, imageUrl = null) => {
       }
     }
   });
+
+  await cache.flushPattern('posts:feed:*');
+  return result;
 };
 
 const getFeedPosts = async (currentUserId = null) => {
+  const cacheKey = `posts:feed:${currentUserId || 'public'}`;
+  const cached = await cache.get(cacheKey);
+  if (cached) return cached;
+
   // 1. Fetch original posts
   const posts = await prisma.post.findMany({
     orderBy: {
@@ -149,7 +157,9 @@ const getFeedPosts = async (currentUserId = null) => {
     return new Date(b.feedTime).getTime() - new Date(a.feedTime).getTime();
   });
 
-  return combined.slice(0, 50);
+  const finalFeed = combined.slice(0, 50);
+  await cache.set(cacheKey, finalFeed, 300); // 5 mins
+  return finalFeed;
 };
 
 const togglePostLike = async (userId, postId) => {
@@ -183,6 +193,9 @@ const togglePostLike = async (userId, postId) => {
     where: { postId }
   });
 
+  await cache.flushPattern('posts:feed:*');
+  await cache.flushPattern(`post:${postId}:*`);
+
   return { liked: !existing, likesCount: count };
 };
 
@@ -213,11 +226,14 @@ const logPostShare = async (userId, postId) => {
     where: { postId }
   });
 
+  await cache.flushPattern('posts:feed:*');
+  await cache.flushPattern(`post:${postId}:*`);
+
   return { shared: !existing, sharesCount: count };
 };
 
 const addComment = async (userId, postId, content, parentCommentId = null) => {
-  return prisma.comment.create({
+  const result = await prisma.comment.create({
     data: {
       userId,
       postId,
@@ -239,9 +255,19 @@ const addComment = async (userId, postId, content, parentCommentId = null) => {
       }
     }
   });
+
+  await cache.del(`post:comments:${postId}`);
+  await cache.flushPattern(`post:${postId}:*`);
+  await cache.flushPattern('posts:feed:*');
+
+  return result;
 };
 
 const getPostCommentsTree = async (postId) => {
+  const cacheKey = `post:comments:${postId}`;
+  const cached = await cache.get(cacheKey);
+  if (cached) return cached;
+
   const flatComments = await prisma.comment.findMany({
     where: { postId },
     orderBy: { createdAt: 'asc' },
@@ -282,6 +308,7 @@ const getPostCommentsTree = async (postId) => {
     }
   });
 
+  await cache.set(cacheKey, roots, 300);
   return roots;
 };
 
@@ -298,9 +325,15 @@ const deletePost = async (userId, postId) => {
     throw new Error('Unauthorized to delete this post');
   }
 
-  return prisma.post.delete({
+  const result = await prisma.post.delete({
     where: { id: postId }
   });
+
+  await cache.flushPattern('posts:feed:*');
+  await cache.flushPattern(`post:${postId}:*`);
+  await cache.del(`post:comments:${postId}`);
+
+  return result;
 };
 
 const getPostReposters = async (postId) => {
@@ -334,6 +367,10 @@ const getPostReposters = async (postId) => {
 };
 
 const getPostById = async (postId, currentUserId = null) => {
+  const cacheKey = `post:${postId}:user:${currentUserId || 'public'}`;
+  const cached = await cache.get(cacheKey);
+  if (cached) return cached;
+
   const post = await prisma.post.findUnique({
     where: { id: postId },
     include: {
@@ -374,7 +411,7 @@ const getPostById = async (postId, currentUserId = null) => {
   const shared = currentUserId ? (post.shares && post.shares.length > 0) : false;
   const { likes, shares, _count, ...rest } = post;
 
-  return {
+  const result = {
     ...rest,
     liked,
     shared,
@@ -382,6 +419,9 @@ const getPostById = async (postId, currentUserId = null) => {
     comments: _count.comments,
     shares: _count.shares
   };
+
+  await cache.set(cacheKey, result, 300);
+  return result;
 };
 
 export {

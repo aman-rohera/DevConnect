@@ -1,5 +1,6 @@
 import { getNeo4jSession } from '../../config/neo4j.js';
 import prisma from '../../config/db.js';
+import cache from '../../config/cache.js';
 
 /**
  * Syncs a user and their skills from PostgreSQL to Neo4j
@@ -97,6 +98,10 @@ const syncUserToNeo4j = async (userId) => {
  * Recommends users based on shared skills.
  */
 const getRecommendations = async (userId) => {
+  const cacheKey = `recommendations:${userId}`;
+  const cached = await cache.get(cacheKey);
+  if (cached) return cached;
+
   // First, get all existing connection targets to exclude them from recommendations
   const existingConnections = await prisma.connection.findMany({
     where: {
@@ -151,6 +156,7 @@ const getRecommendations = async (userId) => {
       mutualConnections: record.get('mutualConnections').toInt()
     }));
 
+    await cache.set(cacheKey, recommendations, 1800); // Cache for 30 mins
     return recommendations;
   } catch (error) {
     console.error('Error fetching recommendations from Neo4j:', error);

@@ -1,7 +1,14 @@
 import prisma from '../../config/db.js';
+import cache from '../../config/cache.js';
 import { syncUserToNeo4j } from '../recommendation/recommendation.service.js';
 
+const getProfileCacheKey = (identifier) => `profile:${identifier}`;
+
 const getUserProfile = async (userId) => {
+  const cacheKey = getProfileCacheKey(userId);
+  const cached = await cache.get(cacheKey);
+  if (cached) return cached;
+
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
@@ -57,8 +64,7 @@ const getUserProfile = async (userId) => {
     description: exp.description
   }));
 
-  // Format response to maintain backward compatibility or align with expected format
-  return {
+  const profileData = {
     id: user.id,
     email: user.email,
     fullName: user.fullName,
@@ -77,9 +83,16 @@ const getUserProfile = async (userId) => {
     certificates: user.profile?.certificates || [],
     skills: formattedSkills
   };
+
+  await cache.set(cacheKey, profileData, 600); // 10 minutes TTL
+  return profileData;
 };
 
 const getProfileByUsername = async (usernameOrId) => {
+  const cacheKey = getProfileCacheKey(usernameOrId);
+  const cached = await cache.get(cacheKey);
+  if (cached) return cached;
+
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(usernameOrId);
   
   const user = await prisma.user.findUnique({
@@ -138,7 +151,7 @@ const getProfileByUsername = async (usernameOrId) => {
     description: edu.description
   }));
 
-  return {
+  const profileData = {
     ...user,
     resumeUrl: user.profile?.resumeUrl || null,
     skills: formattedSkills,
@@ -146,6 +159,9 @@ const getProfileByUsername = async (usernameOrId) => {
     experience: formattedExperiences,
     education: formattedEducation
   };
+
+  await cache.set(cacheKey, profileData, 600);
+  return profileData;
 };
 
 const updateUserProfile = async (userId, data) => {
@@ -308,6 +324,13 @@ const updateUserProfile = async (userId, data) => {
   } catch (err) {
     console.error('Failed to sync user to neo4j:', err);
     // Don't fail the update if neo4j is down
+  }
+
+  // Invalidate profile caches
+  await cache.del(getProfileCacheKey(userId));
+  const userRecord = await prisma.user.findUnique({ where: { id: userId }, select: { username: true } });
+  if (userRecord && userRecord.username) {
+    await cache.del(getProfileCacheKey(userRecord.username));
   }
 
   // Return the updated profile with new skills

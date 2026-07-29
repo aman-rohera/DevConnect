@@ -25,13 +25,13 @@ const createCompany = async (userId, data) => {
   });
 
   // Prefill cache
-  cache.set(getCompanyCacheKey(company.id), company, 300);
+  await cache.set(getCompanyCacheKey(company.id), company, 300);
   return company;
 };
 
 const getCompany = async (companyId) => {
   const cacheKey = getCompanyCacheKey(companyId);
-  const cached = cache.get(cacheKey);
+  const cached = await cache.get(cacheKey);
   
   if (cached) {
     console.log(`[Cache Hit] Company Profile: ${companyId}`);
@@ -53,7 +53,7 @@ const getCompany = async (companyId) => {
   });
 
   if (company) {
-    cache.set(cacheKey, company, 300); // Cache for 5 minutes
+    await cache.set(cacheKey, company, 300); // Cache for 5 minutes
   }
 
   return company;
@@ -61,7 +61,7 @@ const getCompany = async (companyId) => {
 
 const getCompanyBySlug = async (slug) => {
   const cacheKey = `company:slug:${slug}`;
-  const cached = cache.get(cacheKey);
+  const cached = await cache.get(cacheKey);
   if (cached) {
     console.log(`[Cache Hit] Company Slug: ${slug}`);
     return cached;
@@ -95,7 +95,7 @@ const getCompanyBySlug = async (slug) => {
   });
 
   if (company) {
-    cache.set(cacheKey, company, 300);
+    await cache.set(cacheKey, company, 300);
   }
   return company;
 };
@@ -130,8 +130,8 @@ const updateCompany = async (companyId, userId, data) => {
   });
 
   // Invalidate cache on update
-  cache.del(getCompanyCacheKey(companyId));
-  cache.del(`company:slug:${updated.slug}`);
+  await cache.del(getCompanyCacheKey(companyId));
+  await cache.del(`company:slug:${updated.slug}`);
   return updated;
 };
 

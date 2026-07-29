@@ -1,6 +1,11 @@
 import prisma from '../../config/db.js';
+import cache from '../../config/cache.js';
 
 export const searchUsers = async (filters, pagination) => {
+  const cacheKey = `search:users:${JSON.stringify(filters)}:${JSON.stringify(pagination)}`;
+  const cached = await cache.get(cacheKey);
+  if (cached) return cached;
+
   const { q, location, currentCompany, skill, sort } = filters;
   const { page, limit } = pagination;
 
@@ -119,7 +124,7 @@ export const searchUsers = async (filters, pagination) => {
 
   const totalPages = Math.ceil(total / limit);
 
-  return {
+  const result = {
     users: formattedUsers,
     pagination: {
       total,
@@ -128,4 +133,7 @@ export const searchUsers = async (filters, pagination) => {
       hasNextPage: Boolean(page < totalPages)
     }
   };
+
+  await cache.set(cacheKey, result, 300); // Cache search for 5 minutes
+  return result;
 };

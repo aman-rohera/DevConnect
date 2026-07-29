@@ -44,14 +44,14 @@ const createJob = async (recruiterId, data) => {
   }
 
   // Flush jobs cache on new job creation
-  cache.flush(); // Simple invalidation strategy: flush jobs cache
+  await cache.flush(); // Simple invalidation strategy: flush jobs cache
   
   return job;
 };
 
 const getJobs = async (filters = {}) => {
   const cacheKey = getJobsCacheKey(filters);
-  const cached = cache.get(cacheKey);
+  const cached = await cache.get(cacheKey);
 
   if (cached) {
     console.log('[Cache Hit] Job Listings Feed');
@@ -89,7 +89,7 @@ const getJobs = async (filters = {}) => {
     }
   });
 
-  cache.set(cacheKey, jobs, 60); // Cache search query results for 1 minute
+  await cache.set(cacheKey, jobs, 60); // Cache search query results for 1 minute
   return jobs;
 };
 
