@@ -115,9 +115,21 @@ const registerUser = async (email, password, fullName, headline = '', skillsStri
 
   // Await email delivery so cloud container (Render) completes network transmission
   try {
-    await sendWelcomeEmail({ email: newUser.email, fullName: newUser.fullName });
+    const hasResend = !!process.env.RESEND_API_KEY;
+
+    if (hasResend) {
+      await sendWelcomeEmail({ email: newUser.email, fullName: newUser.fullName });
+    } else {
+      const FRONTEND_URL = process.env.FRONTEND_URL || 'https://dev-connect-si.vercel.app';
+      await fetch(`${FRONTEND_URL}/api/send-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: newUser.email, fullName: newUser.fullName, type: 'welcome' }),
+      });
+    }
   } catch (err) {
     console.error('[Email Service Error]:', err);
+    if (err.isOperational) throw err; // rethrow AppError
   }
 
   return newUser;
@@ -242,24 +254,40 @@ const generatePasswordResetOtp = async (email) => {
     }
   });
 
-  // Call the Vercel Frontend Serverless Function to SEND the email (HTTPS — works on Render)
   try {
-    const FRONTEND_URL = process.env.FRONTEND_URL || 'https://dev-connect-si.vercel.app';
-    const res = await fetch(`${FRONTEND_URL}/api/send-email`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: user.email, otp, fullName: user.fullName }),
-    });
+    const hasResend = !!process.env.RESEND_API_KEY;
 
-    const data = await res.json();
-    console.log(`[OTP Service] Vercel API response for ${user.email}:`, data);
+    // If we have Resend API Key, use our built-in email service
+    if (hasResend) {
+      const emailResult = await sendPasswordResetOtpEmail({ 
+        email: user.email, 
+        fullName: user.fullName, 
+        otp 
+      });
+      
+      if (!emailResult.success) {
+        throw new AppError(emailResult.error || 'Failed to send OTP email. Please try again.', 500);
+      }
+    } else {
+      // Use the Vercel Serverless Function to bypass SMTP block
+      const FRONTEND_URL = process.env.FRONTEND_URL || 'https://dev-connect-si.vercel.app';
+      const res = await fetch(`${FRONTEND_URL}/api/send-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: user.email, otp, fullName: user.fullName }),
+      });
 
-    if (!res.ok || !data.success) {
-      throw new AppError(data.message || 'Failed to send OTP via Vercel API. Please try again.', 500);
+      const data = await res.json();
+      console.log(`[OTP Service] Vercel API response for ${user.email}:`, data);
+
+      if (!res.ok || !data.success) {
+        throw new AppError(data.message || 'Failed to send OTP via Vercel API. Please try again.', 500);
+      }
     }
   } catch (err) {
     console.error('[OTP Service Exception]:', err);
-    throw new AppError('Failed to reach Vercel email service. Please try again.', 503);
+    if (err.isOperational) throw err; // If it's our AppError with Vercel's message, throw it directly
+    throw new AppError('Failed to reach email service. Please try again.', 503);
   }
 
   return {

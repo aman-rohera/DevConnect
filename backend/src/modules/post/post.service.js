@@ -160,15 +160,23 @@ const togglePostLike = async (userId, postId) => {
   });
 
   if (existing) {
-    await prisma.like.delete({
-      where: {
-        postId_userId: { postId, userId }
-      }
-    });
+    try {
+      await prisma.like.delete({
+        where: {
+          postId_userId: { postId, userId }
+        }
+      });
+    } catch (e) {
+      // Ignore P2025 if already deleted by a concurrent request
+    }
   } else {
-    await prisma.like.create({
-      data: { postId, userId }
-    });
+    try {
+      await prisma.like.create({
+        data: { postId, userId }
+      });
+    } catch (e) {
+      // Ignore P2002 if already created by a concurrent request
+    }
   }
 
   const count = await prisma.like.count({
@@ -184,13 +192,21 @@ const logPostShare = async (userId, postId) => {
   });
 
   if (existing) {
-    await prisma.share.delete({
-      where: { id: existing.id }
-    });
+    try {
+      await prisma.share.delete({
+        where: { id: existing.id }
+      });
+    } catch (e) {
+      // Ignore P2025
+    }
   } else {
-    await prisma.share.create({
-      data: { postId, userId }
-    });
+    try {
+      await prisma.share.create({
+        data: { postId, userId }
+      });
+    } catch (e) {
+      // Ignore P2002
+    }
   }
 
   const count = await prisma.share.count({
