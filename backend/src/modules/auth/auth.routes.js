@@ -24,6 +24,11 @@ router.post('/forgot-password', validate(forgotPasswordSchema), authController.f
 router.post('/verify-otp', validate(verifyOtpSchema), authController.verifyOtp);
 router.post('/reset-password', validate(resetPasswordSchema), authController.resetPassword);
 
+// Google OAuth 2.0 endpoints
+router.get('/google', authController.googleAuth);
+router.get('/google/callback', authController.googleCallback);
+router.post('/google/callback', authController.googleCallback);
+
 // Diagnostic live email test endpoint
 router.get('/test-email-live', authController.testEmailLive);
 

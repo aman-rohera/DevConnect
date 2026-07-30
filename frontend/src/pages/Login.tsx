@@ -35,6 +35,21 @@ export const Login: React.FC = () => {
     }
   };
 
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const err = params.get("error");
+    if (err) {
+      setError(err);
+      toast.error(err);
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
+  const handleGoogleLogin = () => {
+    const backendUrl = import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5000/api' : 'https://devconnect-11qm.onrender.com/api');
+    window.location.href = `${backendUrl}/auth/google`;
+  };
+
   return (
     <AuthLayout>
       <h1 className="text-2xl font-semibold tracking-tight text-gradient">Sign in</h1>
@@ -48,7 +63,7 @@ export const Login: React.FC = () => {
 
       <div className="mt-6 grid grid-cols-2 gap-2">
         <Button variant="outline"><Github className="mr-2 h-4 w-4" /> GitHub</Button>
-        <Button variant="outline"><Mail className="mr-2 h-4 w-4" /> Google</Button>
+        <Button variant="outline" type="button" onClick={handleGoogleLogin}><Mail className="mr-2 h-4 w-4" /> Google</Button>
       </div>
 
       <div className="my-6 flex items-center gap-3 text-xs text-muted-foreground">

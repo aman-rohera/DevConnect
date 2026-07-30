@@ -45,7 +45,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Restore session on application load
   useEffect(() => {
     const restoreSession = async () => {
-      const storedToken = localStorage.getItem('dc_token');
+      // Check for token in URL query parameter (OAuth redirect flow)
+      const urlParams = new URLSearchParams(window.location.search);
+      const tokenFromUrl = urlParams.get('token');
+      if (tokenFromUrl) {
+        localStorage.setItem('dc_token', tokenFromUrl);
+        // Clean token from URL bar without reloading
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+
+      const storedToken = tokenFromUrl || localStorage.getItem('dc_token');
       const hasCookie = document.cookie.includes('access_token');
 
       // Skip endpoint check if no token or auth cookie exists to prevent unnecessary 401 console warning

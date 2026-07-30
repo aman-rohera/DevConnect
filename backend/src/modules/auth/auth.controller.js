@@ -192,6 +192,121 @@ const resetPassword = async (req, res, next) => {
   }
 };
 
+const getGoogleCallbackUrl = (req) => {
+  if (process.env.GOOGLE_CALLBACK_URL) {
+    return process.env.GOOGLE_CALLBACK_URL;
+  }
+  const rawProtocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+  const protocol = String(rawProtocol).split(',')[0].trim();
+  const host = req.get('host') || 'localhost:5000';
+  return `${protocol}://${host}/api/auth/google/callback`;
+};
+
+const googleAuth = async (req, res, next) => {
+  try {
+    const clientId = process.env.GOOGLE_CLIENT_ID || process.env.CLIENT_ID;
+    if (!clientId) {
+      return res.status(500).json({
+        success: false,
+        message: 'GOOGLE_CLIENT_ID is not configured in server environment.',
+      });
+    }
+
+    const callbackUrl = getGoogleCallbackUrl(req);
+    const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(callbackUrl)}&response_type=code&scope=openid%20email%20profile&prompt=consent`;
+
+    if (req.query.json === 'true' || req.headers.accept?.includes('application/json')) {
+      return res.status(200).json({
+        success: true,
+        data: { url: googleAuthUrl },
+      });
+    }
+
+    return res.redirect(googleAuthUrl);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const googleCallback = async (req, res, next) => {
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const code = req.query.code || req.body?.code;
+  const errorParam = req.query.error;
+
+  if (errorParam) {
+    console.error('[Google OAuth Warning] Consent denied or error:', errorParam);
+    return res.redirect(`${frontendUrl}/login?error=${encodeURIComponent('Google authentication was cancelled or failed.')}`);
+  }
+
+  if (!code) {
+    return res.redirect(`${frontendUrl}/login?error=${encodeURIComponent('No authorization code provided by Google.')}`);
+  }
+
+  try {
+    const clientId = process.env.GOOGLE_CLIENT_ID || process.env.CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET || process.env.CLIENT_SECRET;
+    const callbackUrl = getGoogleCallbackUrl(req);
+
+    // Exchange authorization code for tokens
+    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code: String(code),
+        client_id: clientId,
+        client_secret: clientSecret,
+        redirect_uri: callbackUrl,
+        grant_type: 'authorization_code',
+      }),
+    });
+
+    const tokenData = await tokenRes.json();
+    if (!tokenRes.ok || !tokenData.access_token) {
+      console.error('[Google OAuth Error] Token exchange failed:', tokenData);
+      return res.redirect(`${frontendUrl}/login?error=${encodeURIComponent(tokenData.error_description || 'Failed to exchange authorization code with Google.')}`);
+    }
+
+    // Fetch user profile info from Google
+    const userRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: { Authorization: `Bearer ${tokenData.access_token}` },
+    });
+
+    const googleUser = await userRes.json();
+    if (!userRes.ok || !googleUser.email) {
+      console.error('[Google OAuth Error] UserInfo fetch failed:', googleUser);
+      return res.redirect(`${frontendUrl}/login?error=${encodeURIComponent('Failed to fetch user profile from Google.')}`);
+    }
+
+    const ipAddress = req.ip || req.socket.remoteAddress;
+    const device = req.headers['user-agent'] || 'unknown';
+
+    const { user, tokens } = await authService.findOrCreateGoogleUser({
+      email: googleUser.email,
+      fullName: googleUser.name,
+      avatarUrl: googleUser.picture,
+    }, ipAddress, device);
+
+    setTokenCookies(res, tokens.accessToken, tokens.refreshToken);
+
+    if (req.method === 'POST') {
+      const formattedUser = authService.formatUserResponse(user);
+      return res.status(200).json({
+        success: true,
+        message: 'Google authentication successful',
+        data: {
+          user: formattedUser,
+          session: { access_token: tokens.accessToken, refresh_token: tokens.refreshToken },
+        },
+      });
+    }
+
+    return res.redirect(`${frontendUrl}/?token=${tokens.accessToken}`);
+  } catch (error) {
+    console.error('[Google OAuth Exception]:', error);
+    return res.redirect(`${frontendUrl}/login?error=${encodeURIComponent(error.message || 'Google authentication failed.')}`);
+  }
+};
+
 const testEmailLive = async (req, res) => {
   const to = req.query.to || 'divyeshdandwani6@gmail.com';
   try {
@@ -210,5 +325,5 @@ const testEmailLive = async (req, res) => {
   }
 };
 
-export { register, login, getMe, logout, logoutAll, refresh, forgotPassword, verifyOtp, resetPassword, testEmailLive };
+export { register, login, getMe, logout, logoutAll, refresh, forgotPassword, verifyOtp, resetPassword, testEmailLive, googleAuth, googleCallback };
 
