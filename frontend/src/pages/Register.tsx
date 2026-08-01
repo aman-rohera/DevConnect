@@ -64,6 +64,11 @@ export const Register: React.FC = () => {
     window.location.href = `${backendUrl}/auth/google`;
   };
 
+  const handleGithubRegister = () => {
+    const backendUrl = import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5000/api' : 'https://devconnect-11qm.onrender.com/api');
+    window.location.href = `${backendUrl}/auth/github`;
+  };
+
   return (
     <AuthLayout>
       <h1 className="text-2xl font-semibold tracking-tight text-gradient">Create your account</h1>
@@ -76,7 +81,7 @@ export const Register: React.FC = () => {
       )}
 
       <div className="mt-6 grid grid-cols-2 gap-2">
-        <Button variant="outline"><Github className="mr-2 h-4 w-4" /> GitHub</Button>
+        <Button variant="outline" type="button" onClick={handleGithubRegister}><Github className="mr-2 h-4 w-4" /> GitHub</Button>
         <Button variant="outline" type="button" onClick={handleGoogleRegister}><Mail className="mr-2 h-4 w-4" /> Google</Button>
       </div>
 

@@ -307,6 +307,147 @@ const googleCallback = async (req, res, next) => {
   }
 };
 
+const getGithubCallbackUrl = (req) => {
+  if (process.env.GITHUB_CALLBACK_URL) {
+    return process.env.GITHUB_CALLBACK_URL;
+  }
+  const rawProtocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+  const protocol = String(rawProtocol).split(',')[0].trim();
+  const host = req.get('host') || 'localhost:5000';
+  return `${protocol}://${host}/api/auth/github/callback`;
+};
+
+const githubAuth = async (req, res, next) => {
+  try {
+    const clientId = process.env.GITHUB_CLIENT_ID;
+    if (!clientId) {
+      return res.status(500).json({
+        success: false,
+        message: 'GITHUB_CLIENT_ID is not configured in server environment.',
+      });
+    }
+
+    const callbackUrl = getGithubCallbackUrl(req);
+    const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(callbackUrl)}&scope=user:email`;
+
+    if (req.query.json === 'true' || req.headers.accept?.includes('application/json')) {
+      return res.status(200).json({
+        success: true,
+        data: { url: githubAuthUrl },
+      });
+    }
+
+    return res.redirect(githubAuthUrl);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const githubCallback = async (req, res, next) => {
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const code = req.query.code || req.body?.code;
+  const errorParam = req.query.error;
+
+  if (errorParam) {
+    console.error('[GitHub OAuth Warning] Consent denied or error:', errorParam);
+    return res.redirect(`${frontendUrl}/login?error=${encodeURIComponent('GitHub authentication was cancelled or failed.')}`);
+  }
+
+  if (!code) {
+    return res.redirect(`${frontendUrl}/login?error=${encodeURIComponent('No authorization code provided by GitHub.')}`);
+  }
+
+  try {
+    const clientId = process.env.GITHUB_CLIENT_ID;
+    const clientSecret = process.env.GITHUB_CLIENT_SECRET;
+    const callbackUrl = getGithubCallbackUrl(req);
+
+    // Exchange authorization code for access token
+    const tokenRes = await fetch('https://github.com/login/oauth/access_token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({
+        client_id: clientId,
+        client_secret: clientSecret,
+        code: String(code),
+        redirect_uri: callbackUrl,
+      }),
+    });
+
+    const tokenData = await tokenRes.json();
+    if (!tokenRes.ok || !tokenData.access_token) {
+      console.error('[GitHub OAuth Error] Token exchange failed:', tokenData);
+      return res.redirect(`${frontendUrl}/login?error=${encodeURIComponent(tokenData.error_description || 'Failed to exchange authorization code with GitHub.')}`);
+    }
+
+    // Fetch user profile info from GitHub API
+    const userRes = await fetch('https://api.github.com/user', {
+      headers: {
+        Authorization: `Bearer ${tokenData.access_token}`,
+        'User-Agent': 'DevConnect-App',
+      },
+    });
+
+    const githubUser = await userRes.json();
+    if (!userRes.ok || !githubUser) {
+      console.error('[GitHub OAuth Error] User profile fetch failed:', githubUser);
+      return res.redirect(`${frontendUrl}/login?error=${encodeURIComponent('Failed to fetch user profile from GitHub.')}`);
+    }
+
+    // Resolve primary email (GitHub emails API if email is null/private)
+    let email = githubUser.email;
+    if (!email) {
+      try {
+        const emailsRes = await fetch('https://api.github.com/user/emails', {
+          headers: {
+            Authorization: `Bearer ${tokenData.access_token}`,
+            'User-Agent': 'DevConnect-App',
+          },
+        });
+        const emails = await emailsRes.json();
+        if (Array.isArray(emails) && emails.length > 0) {
+          const primaryEmail = emails.find((e) => e.primary && e.verified) || emails.find((e) => e.verified) || emails[0];
+          email = primaryEmail?.email;
+        }
+      } catch (err) {
+        console.warn('[GitHub OAuth Warning] Failed to fetch emails array:', err);
+      }
+    }
+
+    const ipAddress = req.ip || req.socket.remoteAddress;
+    const device = req.headers['user-agent'] || 'unknown';
+
+    const { user, tokens } = await authService.findOrCreateGithubUser({
+      email,
+      fullName: githubUser.name,
+      avatarUrl: githubUser.avatar_url,
+      githubUsername: githubUser.login,
+    }, ipAddress, device);
+
+    setTokenCookies(res, tokens.accessToken, tokens.refreshToken);
+
+    if (req.method === 'POST') {
+      const formattedUser = authService.formatUserResponse(user);
+      return res.status(200).json({
+        success: true,
+        message: 'GitHub authentication successful',
+        data: {
+          user: formattedUser,
+          session: { access_token: tokens.accessToken, refresh_token: tokens.refreshToken },
+        },
+      });
+    }
+
+    return res.redirect(`${frontendUrl}/?token=${tokens.accessToken}`);
+  } catch (error) {
+    console.error('[GitHub OAuth Exception]:', error);
+    return res.redirect(`${frontendUrl}/login?error=${encodeURIComponent(error.message || 'GitHub authentication failed.')}`);
+  }
+};
+
 const testEmailLive = async (req, res) => {
   const to = req.query.to || 'divyeshdandwani6@gmail.com';
   try {
@@ -325,5 +466,5 @@ const testEmailLive = async (req, res) => {
   }
 };
 
-export { register, login, getMe, logout, logoutAll, refresh, forgotPassword, verifyOtp, resetPassword, testEmailLive, googleAuth, googleCallback };
+export { register, login, getMe, logout, logoutAll, refresh, forgotPassword, verifyOtp, resetPassword, testEmailLive, googleAuth, googleCallback, githubAuth, githubCallback };
 

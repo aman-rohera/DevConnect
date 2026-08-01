@@ -29,6 +29,11 @@ router.get('/google', authController.googleAuth);
 router.get('/google/callback', authController.googleCallback);
 router.post('/google/callback', authController.googleCallback);
 
+// GitHub OAuth 2.0 endpoints
+router.get('/github', authController.githubAuth);
+router.get('/github/callback', authController.githubCallback);
+router.post('/github/callback', authController.githubCallback);
+
 // Diagnostic live email test endpoint
 router.get('/test-email-live', authController.testEmailLive);
 

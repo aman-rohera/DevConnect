@@ -428,6 +428,86 @@ const findOrCreateGoogleUser = async ({ email, fullName, avatarUrl }, ipAddress,
   };
 };
 
+const findOrCreateGithubUser = async ({ email, fullName, avatarUrl, githubUsername }, ipAddress, device) => {
+  const resolvedEmail = email || (githubUsername ? `${githubUsername}@users.noreply.github.com` : null);
+  if (!resolvedEmail) {
+    throw new AppError('GitHub profile did not contain a valid email address.', 400);
+  }
+
+  const cleanEmail = resolvedEmail.toLowerCase().trim();
+
+  // Check if user already exists
+  let user = await prisma.user.findUnique({
+    where: { email: cleanEmail },
+    include: { profile: true },
+  });
+
+  if (user && user.isSuspended) {
+    throw new AppError('This account is suspended. Please contact support.', 403);
+  }
+
+  if (!user) {
+    // Generate unique username from GitHub username or email prefix
+    let baseUsername = (githubUsername || cleanEmail.split('@')[0] || 'dev').replace(/[^a-zA-Z0-9_]/g, '');
+    if (baseUsername.length < 3) baseUsername += 'dev';
+    
+    let username = baseUsername;
+    let counter = 1;
+    while (await prisma.user.findUnique({ where: { username } })) {
+      username = `${baseUsername}${counter}`;
+      counter++;
+    }
+
+    // Generate random secure password for OAuth user
+    const randomPassword = Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-10);
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(randomPassword, salt);
+
+    const displayName = fullName || githubUsername || cleanEmail.split('@')[0] || 'Developer';
+
+    // Create user and profile in transaction
+    user = await prisma.user.create({
+      data: {
+        email: cleanEmail,
+        username,
+        fullName: displayName,
+        passwordHash,
+        profile: {
+          create: {
+            avatarUrl: avatarUrl || null,
+            headline: 'Developer on DevConnect',
+          },
+        },
+      },
+      include: { profile: true },
+    });
+
+    // Send welcome email asynchronously
+    sendWelcomeEmail({ email: user.email, fullName: user.fullName }).catch((err) => {
+      console.warn('[Email Warning] Welcome email trigger failed for GitHub user:', err?.message);
+    });
+  } else if (avatarUrl && (!user.profile || !user.profile.avatarUrl)) {
+    // Upsert avatar if user exists but has no avatar
+    await prisma.profile.upsert({
+      where: { userId: user.id },
+      create: { avatarUrl },
+      update: { avatarUrl },
+    });
+    user = await prisma.user.findUnique({
+      where: { id: user.id },
+      include: { profile: true },
+    });
+  }
+
+  // Create session and tokens
+  const tokens = await createSession(user.id, ipAddress, device);
+
+  return {
+    user,
+    tokens,
+  };
+};
+
 export {
   formatUserResponse,
   getUserById,
@@ -441,5 +521,6 @@ export {
   verifyPasswordResetOtp,
   resetPasswordWithOtp,
   findOrCreateGoogleUser,
+  findOrCreateGithubUser,
 };
 
