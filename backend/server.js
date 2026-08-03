@@ -20,6 +20,7 @@ import notificationRoutes from './src/modules/notification/notification.routes.j
 import searchRoutes from './src/modules/search/search.routes.js';
 import companyRequestRoutes from './src/modules/company-request/company-request.routes.js';
 import adminRoutes from './src/modules/admin/admin.routes.js';
+import healthRoutes from './src/modules/health/health.routes.js';
 
 // Load environment variables
 dotenv.config();
@@ -69,14 +70,10 @@ app.use('/api/search', searchRoutes);
 app.use('/api/company-requests', companyRequestRoutes);
 app.use('/api/admin', adminRoutes);
 
-// Basic Health Check Route
-app.get('/api/health', (req, res) => {
-  res.status(200).json({
-    status: 'UP',
-    message: 'Server is healthy and running',
-    timestamp: new Date()
-  });
-});
+// Health & Cron Ping Routes
+app.use('/api/health', healthRoutes);
+app.use('/api/cron', healthRoutes);
+app.use('/health', healthRoutes);
 
 // Centralized Error Handling Middleware
 app.use(errorHandler);
