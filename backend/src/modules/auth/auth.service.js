@@ -410,7 +410,7 @@ const findOrCreateGoogleUser = async ({ email, fullName, avatarUrl }, ipAddress,
     // Upsert avatar if user exists but has no avatar
     await prisma.profile.upsert({
       where: { userId: user.id },
-      create: { avatarUrl },
+      create: { avatarUrl, userId: user.id },
       update: { avatarUrl },
     });
     user = await prisma.user.findUnique({
@@ -490,7 +490,7 @@ const findOrCreateGithubUser = async ({ email, fullName, avatarUrl, githubUserna
     // Upsert avatar if user exists but has no avatar
     await prisma.profile.upsert({
       where: { userId: user.id },
-      create: { avatarUrl },
+      create: { avatarUrl, userId: user.id },
       update: { avatarUrl },
     });
     user = await prisma.user.findUnique({
