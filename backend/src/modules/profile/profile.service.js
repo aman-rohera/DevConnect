@@ -153,7 +153,14 @@ const getProfileByUsername = async (usernameOrId) => {
 
   const profileData = {
     ...user,
+    headline: user.profile?.headline || null,
+    bio: user.profile?.bio || null,
+    location: user.profile?.location || null,
+    website: user.profile?.website || null,
     resumeUrl: user.profile?.resumeUrl || null,
+    avatarUrl: user.profile?.avatarUrl || null,
+    coverUrl: user.profile?.coverUrl || null,
+    certificates: user.profile?.certificates || [],
     skills: formattedSkills,
     experiences: formattedExperiences,
     experience: formattedExperiences,

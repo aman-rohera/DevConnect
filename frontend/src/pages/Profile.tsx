@@ -168,6 +168,13 @@ export const Profile = () => {
     ? new Date(user.createdAt).toLocaleDateString("en-US", { month: "long", year: "numeric" })
     : "";
 
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return "Present";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString;
+    return date.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+  };
+
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       {/* Hero Header */}
@@ -354,7 +361,7 @@ export const Profile = () => {
                 <div className="flex items-baseline justify-between">
                   <h3 className="font-semibold text-base">{exp.role}</h3>
                   <span className="text-xs text-muted-foreground font-mono">
-                    {exp.startDate} - {exp.endDate || "Present"}
+                    {formatDate(exp.startDate)} - {formatDate(exp.endDate)}
                   </span>
                 </div>
                 <div className="text-sm text-primary font-medium">{exp.company}</div>
@@ -376,7 +383,7 @@ export const Profile = () => {
                 <div className="flex items-baseline justify-between">
                   <h3 className="font-semibold text-base">{edu.degree}</h3>
                   <span className="text-xs text-muted-foreground font-mono">
-                    {edu.startYear} - {edu.endYear || "Present"}
+                    {formatDate(edu.startDate)} - {formatDate(edu.endDate)}
                   </span>
                 </div>
                 <div className="text-sm text-muted-foreground">{edu.school}</div>

@@ -109,7 +109,8 @@ export function ChatDataProvider({ children }: { children: ReactNode }) {
                  id: m.userId,
                  username: m.user.fullName?.toLowerCase().replace(/\s/g, "") || "dev",
                  name: m.user.fullName || "Developer",
-                 avatar: m.user.avatarUrl || AV(m.userId)
+                 avatar: m.user.avatarUrl || AV(m.userId),
+                 online: !!m.user.online
                };
              }
              

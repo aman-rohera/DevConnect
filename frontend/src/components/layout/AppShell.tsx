@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Composer } from "@/components/feed/Composer";
-import { Kbd } from "@/components/ui/kbd";
+
 
 const nav = [
   { to: "/", label: "Home", icon: Home, exact: true },
@@ -129,17 +129,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
             <span className="text-sm font-semibold">DevConnect</span>
           </Link>
-          <div className="ml-auto flex flex-1 items-center justify-end gap-2 lg:ml-0">
-            <Link
-              to="/explore"
-              className="hidden sm:flex flex-1 max-w-md items-center gap-2 rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-muted-foreground transition hover:border-border-strong hover:text-foreground"
-            >
-              <Search className="h-4 w-4" />
-              <span>Search people, posts, tags…</span>
-              <span className="ml-auto flex items-center gap-1">
-                <Kbd>⌘</Kbd><Kbd>K</Kbd>
-              </span>
-            </Link>
+          <div className="ml-auto flex items-center gap-2">
             <Link to="/notifications" className="relative grid h-9 w-9 place-items-center rounded-lg border border-transparent transition hover:border-border hover:bg-surface">
               <Bell className="h-4 w-4" />
               {unread > 0 && (

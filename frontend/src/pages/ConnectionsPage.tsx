@@ -4,7 +4,7 @@ import { api } from "@/services/api";
 import { UserCard } from "@/components/UserCard";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Users, Search, Check, X, Loader2, RefreshCw, UserPlus, Compass } from "lucide-react";
+import { Users, Search, Check, X, UserPlus, Compass } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Link } from "react-router-dom";
@@ -13,12 +13,10 @@ import { toast } from "sonner";
 export const ConnectionsPage = () => {
   const { user: currentUser, token } = useAuth();
   const [q, setQ] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
+  const [, setLoading] = useState(true);
   const [loadingRecommendations, setLoadingRecommendations] = useState(false);
 
   const [rawConnections, setRawConnections] = useState<any[]>([]);
-  const [connections, setConnections] = useState<any[]>([]);
   const [outgoingRequests, setOutgoingRequests] = useState<any[]>([]);
   const [pendingRequests, setPendingRequests] = useState<any[]>([]);
   const [recommendations, setRecommendations] = useState<any[]>([]);
@@ -35,7 +33,7 @@ export const ConnectionsPage = () => {
       await Promise.all([
         fetchConnections(),
         fetchPendingRequests(),
-        fetchRecommendations()
+        autoSyncAndFetchRecommendations()
       ]);
     } catch (err) {
       console.error("Failed to load connections page data", err);
@@ -55,9 +53,16 @@ export const ConnectionsPage = () => {
     }
   };
 
-  const fetchRecommendations = async () => {
+  const autoSyncAndFetchRecommendations = async () => {
     try {
       setLoadingRecommendations(true);
+      // Auto-sync developer skills graph in background whenever page is opened
+      try {
+        await api.post<any>("/recommendations/sync", {}, { token });
+      } catch (syncErr) {
+        console.warn("Graph auto-sync warning:", syncErr);
+      }
+
       const response = await api.get<any>("/recommendations", { token });
       if (response.success) {
         setRecommendations(response.recommendations || []);
@@ -76,41 +81,7 @@ export const ConnectionsPage = () => {
         const rawConns = response.connections || [];
         setRawConnections(rawConns);
 
-        const activeConns = rawConns.filter((c: any) => c.status === "ACCEPTED");
         const outgoing = rawConns.filter((c: any) => c.status === "PENDING" && c.senderId === currentUser?.id);
-
-        // Resolve active connection user details from profile endpoint
-        const resolvedActive = await Promise.all(
-          activeConns.map(async (c: any) => {
-            const otherUserId = c.senderId === currentUser?.id ? c.receiverId : c.senderId;
-            try {
-              const res = await api.get<any>(`/profile/${otherUserId}`, { token });
-              if (res.success && res.data) {
-                return {
-                  id: res.data.id,
-                  name: res.data.fullName,
-                  username: res.data.fullName.toLowerCase().replace(/\s+/g, ""),
-                  avatar: res.data.avatarUrl || "",
-                  bio: res.data.headline || "Software Developer",
-                  skills: res.data.skills || [],
-                  isReal: true
-                };
-              }
-            } catch (err) {
-              console.error(`Failed to resolve connection user profile ${otherUserId}`, err);
-            }
-            return {
-              id: otherUserId,
-              name: "Developer Connection",
-              username: "developer_connection",
-              avatar: "",
-              bio: "Software Developer",
-              skills: [],
-              isReal: true
-            };
-          })
-        );
-        setConnections(resolvedActive);
 
         // Resolve outgoing pending request user details from profile endpoint
         const resolvedOutgoing = await Promise.all(
@@ -194,35 +165,6 @@ export const ConnectionsPage = () => {
     }
   };
 
-  const syncProfile = async () => {
-    try {
-      setSyncing(true);
-      toast.info("Syncing developer skills graph...");
-      const response = await api.post<any>("/recommendations/sync", {}, { token });
-      if (response.success) {
-        toast.success("Graph synced successfully!");
-        await fetchRecommendations();
-      } else {
-        toast.error(response.message || "Failed to sync graph.");
-      }
-    } catch (err) {
-      console.error("Failed to sync profile", err);
-      toast.error("Sync failed. Please try again.");
-    } finally {
-      setSyncing(false);
-    }
-  };
-
-  const mockConnections = useMemo(() => [
-    { id: "u2", name: "Sarah Chen", username: "sarah", avatar: "https://api.dicebear.com/9.x/glass/svg?seed=sarah", bio: "Design engineer @ Linear. Motion, typography, and tiny details.", skills: ["React", "TypeScript", "UI/UX"] },
-    { id: "u3", name: "Kenji Watanabe", username: "kenji", avatar: "https://api.dicebear.com/9.x/glass/svg?seed=kenji", bio: "Infra engineer. Postgres, Kafka, and the joys of on-call.", skills: ["PostgreSQL", "Go", "Docker"] },
-    { id: "u4", name: "Priya Patel", username: "priya", avatar: "https://api.dicebear.com/9.x/glass/svg?seed=priya", bio: "iOS + Swift. Building calm software. She/her.", skills: ["iOS", "Swift", "SwiftUI"] }
-  ], []);
-
-  const activeConnections = useMemo(() => {
-    return [...connections, ...mockConnections];
-  }, [connections, mockConnections]);
-
   const connectionStatusesMap = useMemo(() => {
     const statuses: Record<string, string> = {};
     rawConnections.forEach((conn: any) => {
@@ -243,23 +185,17 @@ export const ConnectionsPage = () => {
   }, [recommendations, connectionStatusesMap]);
 
   const filter = (list: any[]) =>
-    q ? list.filter((u) => (u.name + u.username).toLowerCase().includes(q.toLowerCase())) : list;
+    q ? list.filter((u) => (u.name || u.user?.fullName || "").toLowerCase().includes(q.toLowerCase())) : list;
 
-  const filteredConnections = filter(activeConnections);
+  const filteredRecommendations = filter(availableRecommendations);
   const filteredOutgoing = filter(outgoingRequests);
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
-      {/* Header Bar */}
-      <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-soft flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-gradient">Network</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Manage your developer connections and explore recommendations.</p>
-        </div>
-        <Button onClick={syncProfile} disabled={syncing} size="sm" className="self-start sm:self-auto gap-2">
-          <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
-          <span>{syncing ? "Syncing..." : "Sync Graph"}</span>
-        </Button>
+      {/* Page Header */}
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight text-gradient">Network</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Discover developer recommendations and manage connection requests.</p>
       </div>
 
       <div className="relative max-w-md">
@@ -267,15 +203,15 @@ export const ConnectionsPage = () => {
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Filter connections or recommendations…"
+          placeholder="Filter recommendations or requests…"
           className="h-10 w-full rounded-lg border border-border bg-surface pl-9 pr-3 text-sm outline-none placeholder:text-muted-foreground focus:border-border-strong"
         />
       </div>
 
-      <Tabs defaultValue="connections">
+      <Tabs defaultValue="recommendations">
         <TabsList>
-          <TabsTrigger value="connections">
-            Connections <span className="ml-1.5 font-mono text-xs text-muted-foreground">{activeConnections.length}</span>
+          <TabsTrigger value="recommendations">
+            Recommendations <span className="ml-1.5 font-mono text-xs text-muted-foreground">{availableRecommendations.length}</span>
           </TabsTrigger>
           <TabsTrigger value="requests">
             Received Requests <span className="ml-1.5 rounded-full bg-primary/15 px-1.5 py-0.5 font-mono text-[10px] text-primary">{pendingRequests.length}</span>
@@ -285,28 +221,9 @@ export const ConnectionsPage = () => {
           </TabsTrigger>
         </TabsList>
 
-        {/* Tab 1: Current Connections + Recommended Section */}
-        <TabsContent value="connections" className="mt-4 space-y-8">
-          {/* Active Connections List */}
+        {/* Tab 1: Recommendations */}
+        <TabsContent value="recommendations" className="mt-4">
           <section className="space-y-4">
-            <h2 className="text-sm font-semibold flex items-center gap-2">
-              <Users className="h-4 w-4 text-primary" /> Active Connections ({activeConnections.length})
-            </h2>
-            {loading ? (
-              <div className="flex justify-center py-12">
-                <Loader2 className="h-6 w-6 animate-spin text-primary" />
-              </div>
-            ) : filteredConnections.length === 0 ? (
-              <EmptyState icon={Users} title="No connections yet" description="Start connecting with developers in the recommendations list below." />
-            ) : (
-              <div className="grid gap-3 sm:grid-cols-2">
-                {filteredConnections.map((u) => <UserCard key={u.id} user={u} />)}
-              </div>
-            )}
-          </section>
-
-          {/* Recommendations list */}
-          <section className="space-y-4 border-t border-border pt-8">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold flex items-center gap-2">
                 <Compass className="h-4 w-4 text-primary" /> Recommended Developers
@@ -316,19 +233,19 @@ export const ConnectionsPage = () => {
             {loadingRecommendations ? (
               <div className="flex min-h-[150px] flex-col items-center justify-center gap-2 text-muted-foreground">
                 <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-primary"></div>
-                <span className="text-xs">Finding matches...</span>
+                <span className="text-xs">Updating recommendations...</span>
               </div>
-            ) : availableRecommendations.length === 0 ? (
+            ) : filteredRecommendations.length === 0 ? (
               <div className="rounded-xl border border-border bg-card p-8 text-center shadow-soft">
                 <Users className="mx-auto h-6 w-6 text-muted-foreground mb-2" />
                 <h3 className="font-semibold text-xs mb-1">No recommendations found</h3>
                 <p className="text-[11px] text-muted-foreground max-w-sm mx-auto">
-                  Sync your developer graph or add skills to find matching developer profiles.
+                  Add skills or education to your profile to find matching developer profiles.
                 </p>
               </div>
             ) : (
               <div className="grid gap-4 sm:grid-cols-2">
-                {availableRecommendations.map((rec) => (
+                {filteredRecommendations.map((rec) => (
                   <div key={rec.user.id} className="relative overflow-hidden rounded-2xl border border-border bg-card p-5 flex flex-col justify-between shadow-soft hover:border-border-strong transition">
                     <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-primary/5 to-transparent" />
                     <div className="relative flex items-start gap-4">

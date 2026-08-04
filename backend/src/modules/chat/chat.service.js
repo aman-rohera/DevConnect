@@ -1,5 +1,6 @@
 import prisma from '../../config/db.js';
 import { sendToUser } from '../../config/socket.js';
+import cache from '../../config/cache.js';
 
 const createConversation = async (userId, targetUserId, title = null) => {
   // Check if a direct conversation already exists between the two users
@@ -120,18 +121,29 @@ const getConversations = async (userId) => {
     orderBy: { updatedAt: 'desc' }
   });
 
-  return list.map(c => ({
-    ...c,
-    members: c.members.map(m => ({
-      ...m,
-      user: {
-        id: m.user.id,
-        fullName: m.user.fullName,
-        avatarUrl: m.user.profile?.avatarUrl || null,
-        headline: m.user.profile?.headline || null
-      }
-    }))
-  }));
+  const mappedList = [];
+  for (const c of list) {
+    const mappedMembers = [];
+    for (const m of c.members) {
+      const isOnline = !!(await cache.get(`user:online:${m.user.id}`));
+      mappedMembers.push({
+        ...m,
+        user: {
+          id: m.user.id,
+          fullName: m.user.fullName,
+          avatarUrl: m.user.profile?.avatarUrl || null,
+          headline: m.user.profile?.headline || null,
+          online: isOnline
+        }
+      });
+    }
+    mappedList.push({
+      ...c,
+      members: mappedMembers
+    });
+  }
+
+  return mappedList;
 };
 
 const createMessage = async (conversationId, senderId, content, type = 'TEXT') => {

@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
+import cache from '../config/cache.js';
 
 dotenv.config();
 
@@ -21,6 +22,7 @@ const authenticateToken = (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = decoded; // Contains id, email, role
+    cache.set(`user:online:${decoded.id}`, Date.now(), 120).catch(() => {}); // 2 min TTL
     next();
   } catch (error) {
     return res.status(403).json({
@@ -42,6 +44,7 @@ const optionalAuthenticateToken = (req, res, next) => {
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       req.user = decoded;
+      cache.set(`user:online:${decoded.id}`, Date.now(), 120).catch(() => {});
     } catch (error) {
       // Ignore token verification errors for optional authentication
     }
