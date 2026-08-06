@@ -94,7 +94,8 @@ export const ConnectionsPage = () => {
                   id: res.data.id,
                   name: res.data.fullName,
                   username: res.data.fullName.toLowerCase().replace(/\s+/g, ""),
-                  avatar: res.data.avatarUrl || "",
+                  avatar: res.data.avatarUrl || res.data.profile?.avatarUrl || "",
+                  avatarUrl: res.data.avatarUrl || res.data.profile?.avatarUrl || "",
                   bio: res.data.headline || "Software Developer",
                   skills: res.data.skills || []
                 };
@@ -209,17 +210,19 @@ export const ConnectionsPage = () => {
       </div>
 
       <Tabs defaultValue="recommendations">
-        <TabsList>
-          <TabsTrigger value="recommendations">
-            Recommendations <span className="ml-1.5 font-mono text-xs text-muted-foreground">{availableRecommendations.length}</span>
-          </TabsTrigger>
-          <TabsTrigger value="requests">
-            Received Requests <span className="ml-1.5 rounded-full bg-primary/15 px-1.5 py-0.5 font-mono text-[10px] text-primary">{pendingRequests.length}</span>
-          </TabsTrigger>
-          <TabsTrigger value="outgoing">
-            Sent Requests <span className="ml-1.5 font-mono text-xs text-muted-foreground">{outgoingRequests.length}</span>
-          </TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto pb-1 scrollbar-none">
+          <TabsList className="w-full sm:w-auto flex justify-start sm:inline-flex">
+            <TabsTrigger value="recommendations" className="text-xs sm:text-sm">
+              Recommendations <span className="ml-1.5 font-mono text-xs text-muted-foreground">{availableRecommendations.length}</span>
+            </TabsTrigger>
+            <TabsTrigger value="requests" className="text-xs sm:text-sm">
+              Received Requests <span className="ml-1.5 rounded-full bg-primary/15 px-1.5 py-0.5 font-mono text-[10px] text-primary">{pendingRequests.length}</span>
+            </TabsTrigger>
+            <TabsTrigger value="outgoing" className="text-xs sm:text-sm">
+              Sent Requests <span className="ml-1.5 font-mono text-xs text-muted-foreground">{outgoingRequests.length}</span>
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* Tab 1: Recommendations */}
         <TabsContent value="recommendations" className="mt-4">
@@ -251,8 +254,8 @@ export const ConnectionsPage = () => {
                     <div className="relative flex items-start gap-4">
                       <Link to={`/profile/${rec.user.username || rec.user.id}`}>
                         <Avatar className="h-14 w-14 border border-border bg-surface">
-                          <AvatarImage src={rec.user.avatarUrl || ""} />
-                          <AvatarFallback>{rec.user.fullName[0]}</AvatarFallback>
+                          <AvatarImage src={rec.user.avatarUrl || rec.user.profile?.avatarUrl || rec.user.avatar || ""} />
+                          <AvatarFallback>{(rec.user.fullName || rec.user.name || "D")[0]}</AvatarFallback>
                         </Avatar>
                       </Link>
                       <div className="min-w-0 flex-1">
@@ -309,8 +312,8 @@ export const ConnectionsPage = () => {
                 <div key={req.id} className="flex items-center justify-between p-3 rounded-xl border border-border bg-card">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-10 w-10 border border-border">
-                      <AvatarImage src={req.sender.avatarUrl || ""} />
-                      <AvatarFallback>{req.sender.fullName[0]}</AvatarFallback>
+                      <AvatarImage src={req.sender.avatarUrl || req.sender.profile?.avatarUrl || req.sender.avatar || ""} />
+                      <AvatarFallback>{(req.sender.fullName || req.sender.name || "D")[0]}</AvatarFallback>
                     </Avatar>
                     <div>
                       <Link to={`/profile/${req.sender.username || req.sender.id}`} className="font-semibold text-sm hover:underline">

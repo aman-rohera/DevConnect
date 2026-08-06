@@ -10,14 +10,13 @@ export function UserCard({ user, compact }: { user: any; compact?: boolean }) {
   const isFollowing = following.has(user.id);
 
   const name = user.fullName || user.name || "Developer";
-  const avatar = user.avatar || user.avatarUrl || "";
 
   return (
     <div className="flex items-start gap-3 rounded-xl border border-border bg-card p-4 transition hover:border-border-strong">
       <Link to={`/profile/${user.username || user.id}`}>
         <Avatar className="h-10 w-10 border border-border">
-          <AvatarImage src={user.profile?.avatarUrl || avatar} alt={user.fullName} />
-          <AvatarFallback>{user.fullName?.[0] || name[0]}</AvatarFallback>
+          <AvatarImage src={user.avatarUrl || user.avatar || user.profile?.avatarUrl || ""} alt={name} />
+          <AvatarFallback>{(user.fullName || user.name || "D")[0]}</AvatarFallback>
         </Avatar>
       </Link>
       <div className="min-w-0 flex-1">

@@ -136,6 +136,48 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-primary pulse-dot" />
               )}
             </Link>
+
+            {/* Mobile Profile & Logout Menu */}
+            <div className="lg:hidden">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="grid h-9 w-9 place-items-center rounded-full ring-focus">
+                    <Avatar className="h-7 w-7 border border-border">
+                      <AvatarImage src={currentUser.avatar} />
+                      <AvatarFallback>{currentUser.name[0]}</AvatarFallback>
+                    </Avatar>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-52">
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="text-sm font-medium">{currentUser.name}</div>
+                    <div className="text-xs text-muted-foreground">@{currentUser.username}</div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate("/profile")} className="cursor-pointer">
+                    <UserIcon className="mr-2 h-4 w-4" /> Profile
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/settings")} className="cursor-pointer">
+                    <Settings className="mr-2 h-4 w-4" /> Settings
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/companies/create")} className="cursor-pointer">
+                    <Building2 className="mr-2 h-4 w-4" /> Create Company
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/companies/manage")} className="cursor-pointer">
+                    <Briefcase className="mr-2 h-4 w-4" /> Manage Companies
+                  </DropdownMenuItem>
+                  {authUser?.role === "ADMIN" && (
+                    <DropdownMenuItem onClick={() => navigate("/admin")} className="cursor-pointer font-semibold text-primary">
+                      <ShieldAlert className="mr-2 h-4 w-4" /> Admin Panel
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={logout} className="cursor-pointer text-destructive">
+                    <LogOut className="mr-2 h-4 w-4" /> Sign out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </div>
       </header>
@@ -146,13 +188,13 @@ export function AppShell({ children }: { children: ReactNode }) {
       </main>
 
       {/* Mobile bottom nav */}
-      <nav className="fixed inset-x-0 bottom-0 z-30 flex h-16 items-center justify-around border-t border-border glass lg:hidden">
+      <nav className="fixed inset-x-3 bottom-3 z-30 flex h-14 items-center justify-around rounded-2xl border border-border/80 bg-background/80 backdrop-blur-xl shadow-2xl lg:hidden px-2">
         {nav.map((item) => (
           <BottomItem key={item.to} {...item} badge={badgeFor(item)} />
         ))}
         <Dialog open={composeOpen} onOpenChange={setComposeOpen}>
           <DialogTrigger asChild>
-            <button aria-label="New post" className="grid h-11 w-11 place-items-center rounded-full bg-primary text-primary-foreground shadow-glow">
+            <button aria-label="New post" className="grid h-10 w-10 place-items-center rounded-full bg-gradient-to-tr from-primary to-chart-2 text-primary-foreground shadow-glow active:scale-95 transition-transform">
               <Plus className="h-5 w-5" />
             </button>
           </DialogTrigger>
@@ -160,16 +202,6 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Composer onDone={() => setComposeOpen(false)} />
           </DialogContent>
         </Dialog>
-        <Link
-          to="/profile"
-          aria-label="Profile"
-          className="grid h-11 w-11 place-items-center"
-        >
-          <Avatar className="h-7 w-7 border border-border">
-            <AvatarImage src={currentUser.avatar} />
-            <AvatarFallback>{currentUser.name[0]}</AvatarFallback>
-          </Avatar>
-        </Link>
       </nav>
     </div>
   );
@@ -211,11 +243,19 @@ function BottomItem({ to, label, icon: Icon, exact, badge }: any) {
     <Link
       to={to}
       aria-label={label}
-      className="relative grid h-11 w-11 place-items-center rounded-lg"
+      className={cn(
+        "relative flex flex-col items-center justify-center h-10 w-10 rounded-xl transition-all duration-200",
+        active ? "bg-primary/15 text-primary scale-105" : "text-muted-foreground hover:text-foreground active:scale-95"
+      )}
     >
-      <Icon className={cn("h-5 w-5 transition", active ? "text-primary" : "text-muted-foreground")} />
+      <Icon className={cn("h-5 w-5 transition-transform", active && "stroke-[2.25px]")} />
+      {active && (
+        <span className="absolute -bottom-1 h-1 w-1 rounded-full bg-primary" />
+      )}
       {typeof badge === "number" && badge > 0 && (
-        <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary" />
+        <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground shadow-sm">
+          {badge > 99 ? "99+" : badge}
+        </span>
       )}
     </Link>
   );
