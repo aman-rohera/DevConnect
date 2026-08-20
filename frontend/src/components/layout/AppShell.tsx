@@ -1,7 +1,8 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import logo from "@/assets/logo.png";
 import {
   Home, Bell, Users, User as UserIcon, Settings,
-  Search, Plus, LogOut, Sparkles, MessageSquare, Briefcase, Building2, ShieldAlert
+  Search, Plus, LogOut, MessageSquare, Briefcase, Building2, ShieldAlert
 } from "lucide-react";
 import { useAppData } from "@/lib/app-data";
 import { useChatUnread } from "@/lib/chat-data";
@@ -50,9 +51,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-[260px] border-r border-border bg-sidebar lg:flex lg:flex-col">
         <div className="flex h-16 items-center gap-2 px-6">
           <Link to="/" className="flex items-center gap-2 group">
-            <div className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-primary to-chart-2 shadow-glow">
-              <Sparkles className="h-4 w-4 text-primary-foreground" />
-            </div>
+            <img src={logo} alt="DevConnect" className="h-8 w-8 rounded-lg shadow-glow object-cover" />
             <span className="text-[15px] font-semibold tracking-tight">DevConnect</span>
           </Link>
         </div>
@@ -124,9 +123,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <header className="sticky top-0 z-20 h-14 border-b border-border glass lg:pl-[260px]">
         <div className="mx-auto flex h-full max-w-6xl items-center gap-3 px-4">
           <Link to="/" className="flex items-center gap-2 lg:hidden">
-            <div className="grid h-7 w-7 place-items-center rounded-md bg-gradient-to-br from-primary to-chart-2">
-              <Sparkles className="h-3.5 w-3.5 text-primary-foreground" />
-            </div>
+            <img src={logo} alt="DevConnect" className="h-7 w-7 rounded-md object-cover" />
             <span className="text-sm font-semibold">DevConnect</span>
           </Link>
           <div className="ml-auto flex items-center gap-2">

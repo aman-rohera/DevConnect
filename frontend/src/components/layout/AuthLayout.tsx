@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
-import { Sparkles } from "lucide-react";
+import logo from "@/assets/logo.png";
+
 import type { ReactNode } from "react";
 
 export function AuthLayout({ children }: { children: ReactNode }) {
@@ -8,9 +9,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
       {/* Left — form */}
       <div className="flex min-h-dvh flex-col px-6 py-8 sm:px-10">
         <Link to="/" className="inline-flex items-center gap-2 self-start">
-          <div className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-primary to-chart-2 shadow-glow">
-            <Sparkles className="h-4 w-4 text-primary-foreground" />
-          </div>
+          <img src={logo} alt="DevConnect" className="h-8 w-8 rounded-lg shadow-glow object-cover" />
           <span className="text-sm font-semibold tracking-tight">DevConnect</span>
         </Link>
         <div className="flex flex-1 items-center justify-center">
