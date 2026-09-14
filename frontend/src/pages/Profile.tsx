@@ -10,7 +10,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import {
   BadgeCheck, MapPin, Building2, Globe, Github,
   Settings, MessageCircle, Link as LinkIcon, FileText,
-  Image as ImageIcon, Calendar, Briefcase, GraduationCap, Award, ExternalLink
+  Image as ImageIcon, Calendar, Briefcase, GraduationCap, Award, ExternalLink, Users
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -25,6 +25,7 @@ export const Profile = () => {
   const [loading, setLoading] = useState(true);
   const [connectionStatus, setConnectionStatus] = useState<string>("Connect");
   const [connecting, setConnecting] = useState(false);
+  const [mutualConnections, setMutualConnections] = useState<any[]>([]);
 
   const navigate = useNavigate();
 
@@ -37,9 +38,21 @@ export const Profile = () => {
       fetchUserPosts(user.id);
       if (!isMe) {
         fetchConnectionStatus(user.id);
+        fetchMutualConnections(user.id);
       }
     }
   }, [user?.id, isMe, token]);
+
+  const fetchMutualConnections = async (targetId: string) => {
+    try {
+      const response = await api.get<any>(`/connections/mutual/${targetId}`, { token });
+      if (response.success && response.mutualConnections) {
+        setMutualConnections(response.mutualConnections);
+      }
+    } catch (err) {
+      console.error("Failed to fetch mutual connections", err);
+    }
+  };
 
   const fetchProfile = async () => {
     try {
@@ -237,6 +250,34 @@ export const Profile = () => {
                 </span>
               )}
             </dl>
+
+            {!isMe && mutualConnections.length > 0 && (
+              <div className="mt-4 flex items-center gap-2.5 rounded-xl border border-indigo-500/20 bg-indigo-500/10 p-2.5 max-w-fit">
+                <div className="flex -space-x-2 overflow-hidden">
+                  {mutualConnections.slice(0, 3).map((m: any) => (
+                    <Link key={m.id} to={`/profile/${m.username || m.id}`} title={m.fullName}>
+                      <Avatar className="inline-block h-6 w-6 ring-2 ring-card hover:scale-110 transition">
+                        <AvatarImage src={m.avatarUrl || ""} />
+                        <AvatarFallback className="text-[9px] bg-indigo-500/20 text-indigo-300">{m.fullName[0]}</AvatarFallback>
+                      </Avatar>
+                    </Link>
+                  ))}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  <Users className="inline h-3.5 w-3.5 mr-1 text-indigo-400 -mt-0.5" />
+                  <span className="font-medium text-foreground">
+                    {mutualConnections[0].fullName}
+                    {mutualConnections.length > 1 && `, ${mutualConnections[1].fullName}`}
+                  </span>
+                  {mutualConnections.length > 2 && (
+                    <span> and {mutualConnections.length - 2} other mutual connection{mutualConnections.length - 2 > 1 ? "s" : ""}</span>
+                  )}
+                  {mutualConnections.length <= 2 && (
+                    <span> {mutualConnections.length === 1 ? "is a mutual connection" : "are mutual connections"}</span>
+                  )}
+                </div>
+              </div>
+            )}
 
             {skills.length > 0 && (
               <div className="mt-4 flex flex-wrap gap-1.5">

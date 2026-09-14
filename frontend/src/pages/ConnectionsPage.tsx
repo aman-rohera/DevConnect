@@ -265,8 +265,20 @@ export const ConnectionsPage = () => {
                         <p className="text-xs text-muted-foreground truncate mb-2">{rec.user.headline || "Software Developer"}</p>
                         
                         {rec.commonSkills > 0 && (
-                          <span className="inline-flex rounded-full bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-medium text-primary mb-3">
+                          <span className="inline-flex rounded-full bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-medium text-primary mb-3 mr-1.5">
                             {rec.commonSkills} Shared Skill{rec.commonSkills > 1 ? "s" : ""}
+                          </span>
+                        )}
+
+                        {rec.mutualConnections > 0 && (
+                          <span className="inline-flex rounded-full bg-indigo-500/10 px-2 py-0.5 font-mono text-[10px] font-medium text-indigo-400 mb-3 mr-1.5">
+                            {rec.mutualConnections} Mutual Connection{rec.mutualConnections > 1 ? "s" : ""}
+                          </span>
+                        )}
+
+                        {rec.isFallback && !rec.commonSkills && !rec.mutualConnections && (
+                          <span className="inline-flex rounded-full bg-muted/60 px-2 py-0.5 font-mono text-[10px] font-medium text-muted-foreground mb-3">
+                            Suggested Developer
                           </span>
                         )}
 

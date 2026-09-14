@@ -122,4 +122,74 @@ const getConnections = async (userId) => {
   });
 };
 
-export { sendConnectionRequest, getPendingRequests, respondToRequest, getConnections };
+const getMutualConnections = async (currentUserId, targetUserId) => {
+  if (!currentUserId || !targetUserId || currentUserId === targetUserId) {
+    return [];
+  }
+
+  // 1. Fetch current user's accepted connections
+  const myConns = await prisma.connection.findMany({
+    where: {
+      OR: [
+        { senderId: currentUserId, status: 'ACCEPTED' },
+        { receiverId: currentUserId, status: 'ACCEPTED' }
+      ]
+    }
+  });
+
+  const myFriends = new Set(
+    myConns.map(c => (c.senderId === currentUserId ? c.receiverId : c.senderId))
+  );
+
+  if (myFriends.size === 0) return [];
+
+  const myFriendsArr = Array.from(myFriends);
+
+  // 2. Fetch target user's accepted connections intersecting with myFriends
+  const targetConns = await prisma.connection.findMany({
+    where: {
+      OR: [
+        { senderId: targetUserId, status: 'ACCEPTED', receiverId: { in: myFriendsArr } },
+        { receiverId: targetUserId, status: 'ACCEPTED', senderId: { in: myFriendsArr } }
+      ]
+    },
+    include: {
+      sender: {
+        select: {
+          id: true,
+          fullName: true,
+          username: true,
+          profile: { select: { avatarUrl: true, headline: true } }
+        }
+      },
+      receiver: {
+        select: {
+          id: true,
+          fullName: true,
+          username: true,
+          profile: { select: { avatarUrl: true, headline: true } }
+        }
+      }
+    }
+  });
+
+  const mutuals = [];
+  const seen = new Set();
+  for (const c of targetConns) {
+    const m = c.senderId === targetUserId ? c.receiver : c.sender;
+    if (m && m.id !== currentUserId && !seen.has(m.id)) {
+      seen.add(m.id);
+      mutuals.push({
+        id: m.id,
+        fullName: m.fullName,
+        username: m.username,
+        avatarUrl: m.profile?.avatarUrl || '',
+        headline: m.profile?.headline || 'Developer'
+      });
+    }
+  }
+
+  return mutuals;
+};
+
+export { sendConnectionRequest, getPendingRequests, respondToRequest, getConnections, getMutualConnections };

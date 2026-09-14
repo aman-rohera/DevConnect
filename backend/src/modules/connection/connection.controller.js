@@ -39,4 +39,14 @@ const getMyConnections = async (req, res) => {
   }
 };
 
-export { sendRequest, getPending, respond, getMyConnections };
+const getMutuals = async (req, res) => {
+  try {
+    const { targetUserId } = req.params;
+    const mutualConnections = await connectionService.getMutualConnections(req.user.id, targetUserId);
+    res.json({ success: true, count: mutualConnections.length, mutualConnections });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export { sendRequest, getPending, respond, getMyConnections, getMutuals };

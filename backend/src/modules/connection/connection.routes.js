@@ -9,6 +9,7 @@ router.use(authenticateToken);
 router.get('/', connectionController.getMyConnections);
 router.post('/request', connectionController.sendRequest);
 router.get('/pending', connectionController.getPending);
+router.get('/mutual/:targetUserId', connectionController.getMutuals);
 router.put('/:connectionId/respond', connectionController.respond);
 
 export default router;
